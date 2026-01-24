@@ -203,7 +203,9 @@ namespace Presentacion
                 if (reports.Count == 0)
                     throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
 
-                return BuildProductSummaryTable(reports);
+                //return BuildProductSummaryTable(reports);
+                return BuildSubProductoSummaryTable(reports);
+
             }
             finally
             {
@@ -582,6 +584,118 @@ namespace Presentacion
 
             return dt;
         }
+
+
+        private DataTable BuildSubProductoSummaryTable(List<ReportItem> items)
+        {
+            // 1) acumuladores por ClaveSubProducto
+            var dict = new Dictionary<string, Agg>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var r = items[i].Report;
+                if (r == null || r.Producto == null) continue;
+
+                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
+                {
+                    var p = r.Producto[pIndex];
+                    if (p == null) continue;
+
+                    var key = (p.ClaveSubProducto ?? "").Trim();
+                    if (key.Length == 0) key = "(SIN_CLAVESUBPRODUCTO)";
+
+                    Agg agg;
+                    if (!dict.TryGetValue(key, out agg))
+                    {
+                        agg = new Agg { ClaveSubProducto = key };
+                        dict[key] = agg;
+                    }
+
+                    // suma por tanques/recepciones
+                    if (p.Tanque == null) continue;
+
+                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
+                    {
+                        var t = p.Tanque[tIndex];
+                        if (t == null || t.Recepciones == null) continue;
+
+                        agg.TotalRecepciones += (t.Recepciones.TotalRecepciones ?? 0);
+                        agg.TotalDocumentos += (t.Recepciones.TotalDocumentos ?? 0);
+                        agg.SumaCompras += (t.Recepciones.SumaCompras ?? 0m);
+
+                        if (t.Recepciones.SumaVolumenRecepcion != null)
+                        {
+                            agg.SumaVolRecepcion += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
+
+                            var u = t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida;
+                            if (!string.IsNullOrWhiteSpace(u))
+                                agg.RegisterUnidad(u);
+                        }
+                    }
+                }
+            }
+
+            // 2) DataTable para el DGV
+            var dt = new DataTable();
+            dt.Columns.Add("ClaveSubProducto", typeof(string));
+            dt.Columns.Add("TotalRecepciones", typeof(int));
+            dt.Columns.Add("TotalDocumentos", typeof(int));
+            dt.Columns.Add("SumaCompras", typeof(decimal));
+            dt.Columns.Add("SumaVolRecepcion", typeof(decimal));
+            dt.Columns.Add("UnidadVol", typeof(string));
+
+            // 3) cargar filas ordenadas (por ejemplo por SumaVolRecepcion desc)
+            foreach (var agg in dict.Values.OrderByDescending(x => x.SumaVolRecepcion))
+            {
+                var row = dt.NewRow();
+                row["ClaveSubProducto"] = agg.ClaveSubProducto;
+                row["TotalRecepciones"] = agg.TotalRecepciones;
+                row["TotalDocumentos"] = agg.TotalDocumentos;
+                row["SumaCompras"] = agg.SumaCompras;
+                row["SumaVolRecepcion"] = agg.SumaVolRecepcion;
+                row["UnidadVol"] = agg.UnidadVol;
+                dt.Rows.Add(row);
+            }
+
+            return dt;
+        }
+
+        // Clase auxiliar de acumulación
+        private class Agg
+        {
+            public string ClaveSubProducto;
+            public int TotalRecepciones;
+            public int TotalDocumentos;
+            public decimal SumaCompras;
+            public decimal SumaVolRecepcion;
+
+            private string _unidad;
+            private bool _mix;
+
+            public void RegisterUnidad(string unidad)
+            {
+                if (_mix) return;
+
+                if (_unidad == null) _unidad = unidad;
+                else if (!string.Equals(_unidad, unidad, StringComparison.OrdinalIgnoreCase))
+                    _mix = true;
+            }
+
+            public string UnidadVol
+            {
+                get
+                {
+                    if (_mix) return "MIX";
+                    return _unidad ?? "";
+                }
+            }
+        }
+
+
+
+
+
+
     }
 }
 
