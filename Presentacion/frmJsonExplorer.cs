@@ -1,4 +1,7 @@
-﻿using System;
+﻿using ClosedXML.Excel;
+using Models;
+using SharpCompress.Archives;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -8,20 +11,16 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using ClosedXML.Excel;
-using Models;
-using SharpCompress.Archives;
-using SharpCompress.Common;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Presentacion
-
 {
     public partial class frmJsonExplorer : Form
     {
-        // Ajusta si quieres soportar más extensiones
         private readonly string[] _archiveExtensions = new[] { ".zip", ".rar" };
 
-        private DataTable _lastSummary;
+        private DataTable _inventoryTable;
+        private DataTable _salesTable;
 
         private class ReportItem
         {
@@ -36,13 +35,21 @@ namespace Presentacion
 
         private void frmJsonExplorer_Load(object sender, EventArgs e)
         {
-            dgvSummary.AutoGenerateColumns = true;
-            dgvSummary.AllowUserToAddRows = false;
-            dgvSummary.AllowUserToDeleteRows = false;
-            dgvSummary.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            SetupGrid(dgvInventario);
+            SetupGrid(dgvVenta);
 
             lblStatus.Text = "Listo.";
             progressBar.Style = ProgressBarStyle.Blocks;
+            btnExport.Enabled = false;
+        }
+
+        private void SetupGrid(DataGridView dgv)
+        {
+            dgv.AutoGenerateColumns = true;
+            dgv.AllowUserToAddRows = false;
+            dgv.AllowUserToDeleteRows = false;
+            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgv.ReadOnly = true;
         }
 
         private void btnBrowse_Click(object sender, EventArgs e)
@@ -53,9 +60,7 @@ namespace Presentacion
                 dlg.ShowNewFolderButton = false;
 
                 if (dlg.ShowDialog() == DialogResult.OK)
-                {
                     txtFolder.Text = dlg.SelectedPath;
-                }
             }
         }
 
@@ -71,21 +76,29 @@ namespace Presentacion
             btnBrowse.Enabled = false;
             btnProcess.Enabled = false;
             btnExport.Enabled = false;
-            dgvSummary.DataSource = null;
-            _lastSummary = null;
+
+            dgvInventario.DataSource = null;
+            dgvVenta.DataSource = null;
+            _inventoryTable = null;
+            _salesTable = null;
 
             progressBar.Style = ProgressBarStyle.Marquee;
             lblStatus.Text = "Procesando...";
 
             try
             {
-                var dt = await Task.Run(() => ProcessFolderSummary(folder));
+                var result = await Task.Run(() => LoadAllTables(folder));
 
-                _lastSummary = dt;
-                dgvSummary.DataSource = dt;
+                _inventoryTable = result.Item1;
+                _salesTable = result.Item2;
 
-                lblStatus.Text = "Listo. Filas: " + dt.Rows.Count.ToString("N0");
-                btnExport.Enabled = dt.Rows.Count > 0;
+                dgvInventario.DataSource = _inventoryTable;
+                dgvVenta.DataSource = _salesTable;
+
+                btnExport.Enabled = ((_inventoryTable != null && _inventoryTable.Rows.Count > 0) ||
+                                     (_salesTable != null && _salesTable.Rows.Count > 0));
+
+                lblStatus.Text = $"Listo. Inventario: {_inventoryTable.Rows.Count:N0} filas | Venta: {_salesTable.Rows.Count:N0} filas";
             }
             catch (Exception ex)
             {
@@ -100,36 +113,86 @@ namespace Presentacion
             }
         }
 
+        private Tuple<DataTable, DataTable> LoadAllTables(string rootFolder)
+        {
+            var tempRoot = Path.Combine(Path.GetTempPath(), "JX", Guid.NewGuid().ToString("N").Substring(0, 8));
+            Directory.CreateDirectory(tempRoot);
+
+            try
+            {
+                var jsonFiles = CollectJsonFilesRecursive(rootFolder, tempRoot);
+
+                if (jsonFiles.Count == 0)
+                    throw new InvalidOperationException("No se encontró ningún .json (ni dentro de .zip/.rar).");
+
+                if (chkStopOnFirstJson.Checked)
+                    jsonFiles = jsonFiles.Take(1).ToList();
+
+                var reports = LoadReports(jsonFiles);
+
+                if (reports.Count == 0)
+                    throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
+
+                // Inventario consolidado por ClaveSubProducto
+                var inv = BuildSubProductoSummaryTable(reports);
+
+                // Venta (detalle CFDIs)
+                var sales = BuildVentasTable(reports);
+
+                return Tuple.Create(inv, sales);
+            }
+            finally
+            {
+                try { Directory.Delete(tempRoot, true); } catch { }
+            }
+        }
+
+        // ==========================
+        //  EXPORT: exporta TAB ACTIVO
+        // ==========================
         private void btnExport_Click(object sender, EventArgs e)
         {
-            if (_lastSummary == null || _lastSummary.Rows.Count == 0)
+            DataTable table;
+            string defaultName;
+
+            if (tabMain.SelectedTab == tabInventario)
             {
-                MessageBox.Show("No hay datos para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                table = _inventoryTable;
+                defaultName = "Inventario_Resumen.xlsx";
+            }
+            else
+            {
+                table = _salesTable;
+                defaultName = "Venta_Detalle.xlsx";
+            }
+
+            if (table == null || table.Rows.Count == 0)
+            {
+                MessageBox.Show("No hay datos para exportar en este tab.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             using (var sfd = new SaveFileDialog())
             {
                 sfd.Filter = "Excel (*.xlsx)|*.xlsx";
-                sfd.FileName = "ResumenRecepciones.xlsx";
-
+                sfd.FileName = defaultName;
                 if (sfd.ShowDialog() != DialogResult.OK) return;
 
                 using (var wb = new XLWorkbook())
                 {
-                    var ws = wb.Worksheets.Add("Resumen");
+                    var ws = wb.Worksheets.Add(tabMain.SelectedTab.Text);
 
                     // Encabezados
-                    for (int c = 0; c < _lastSummary.Columns.Count; c++)
-                        ws.Cell(1, c + 1).SetValue(_lastSummary.Columns[c].ColumnName);
+                    for (int c = 0; c < table.Columns.Count; c++)
+                        ws.Cell(1, c + 1).SetValue(table.Columns[c].ColumnName);
 
                     // Datos
-                    for (int r = 0; r < _lastSummary.Rows.Count; r++)
+                    for (int r = 0; r < table.Rows.Count; r++)
                     {
-                        for (int c = 0; c < _lastSummary.Columns.Count; c++)
+                        for (int c = 0; c < table.Columns.Count; c++)
                         {
-                            var col = _lastSummary.Columns[c];
-                            var value = _lastSummary.Rows[r][c];
+                            var col = table.Columns[c];
+                            var value = table.Rows[r][c];
                             SetCellValue(ws.Cell(r + 2, c + 1), value, col.DataType);
                         }
                     }
@@ -150,7 +213,6 @@ namespace Presentacion
                 return;
             }
 
-            // Usa el tipo real de la columna (DataColumn.DataType)
             if (dataType == typeof(int) || dataType == typeof(long) || dataType == typeof(short))
             {
                 cell.SetValue(Convert.ToInt64(value));
@@ -175,46 +237,242 @@ namespace Presentacion
                 return;
             }
 
-            // Todo lo demás como texto
             cell.SetValue(value.ToString());
         }
 
         // ==========================
-        //  Pipeline principal
+        //  INVENTARIO: agrupado por ClaveSubProducto (sumatorias)
         // ==========================
-        private DataTable ProcessFolderSummary(string rootFolder)
+        private DataTable BuildSubProductoSummaryTable(List<ReportItem> items)
         {
-            // Temp MUY corto para evitar rutas largas en .NET Framework
-            var tempRoot = Path.Combine(Path.GetTempPath(), "JX", Guid.NewGuid().ToString("N").Substring(0, 8));
-            Directory.CreateDirectory(tempRoot);
+            var dict = new Dictionary<string, Agg>(StringComparer.OrdinalIgnoreCase);
 
-            try
+            for (int i = 0; i < items.Count; i++)
             {
-                var jsonFiles = CollectJsonFilesRecursive(rootFolder, tempRoot);
+                var r = items[i].Report;
+                if (r == null || r.Producto == null) continue;
 
-                if (jsonFiles.Count == 0)
-                    throw new InvalidOperationException("No se encontró ningún .json (ni dentro de .zip/.rar).");
+                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
+                {
+                    var p = r.Producto[pIndex];
+                    if (p == null) continue;
 
-                if (chkStopOnFirstJson.Checked)
-                    jsonFiles = jsonFiles.Take(1).ToList();
+                    var key = (p.ClaveSubProducto ?? "").Trim();
+                    if (key.Length == 0) key = "(SIN_CLAVESUBPRODUCTO)";
 
-                var reports = LoadReports(jsonFiles);
+                    Agg agg;
+                    if (!dict.TryGetValue(key, out agg))
+                    {
+                        agg = new Agg { ClaveSubProducto = key };
+                        dict[key] = agg;
+                    }
 
-                if (reports.Count == 0)
-                    throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
+                    if (p.Tanque == null) continue;
 
-                //return BuildProductSummaryTable(reports);
-                return BuildSubProductoSummaryTable(reports);
+                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
+                    {
+                        var t = p.Tanque[tIndex];
+                        if (t == null || t.Recepciones == null) continue;
 
+                        agg.TotalRecepciones += (t.Recepciones.TotalRecepciones ?? 0);
+                        agg.TotalDocumentos += (t.Recepciones.TotalDocumentos ?? 0);
+                        agg.SumaCompras += (t.Recepciones.SumaCompras ?? 0m);
+
+                        if (t.Recepciones.SumaVolumenRecepcion != null)
+                        {
+                            agg.SumaVolRecepcion += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
+                            var u = t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida;
+                            if (!string.IsNullOrWhiteSpace(u))
+                                agg.RegisterUnidad(u);
+                        }
+                    }
+                }
             }
-            finally
+
+            var dt = new DataTable();
+            dt.Columns.Add("ClaveSubProducto", typeof(string));
+            dt.Columns.Add("TotalRecepciones", typeof(int));
+            dt.Columns.Add("TotalDocumentos", typeof(int));
+            dt.Columns.Add("SumaCompras", typeof(decimal));
+            dt.Columns.Add("SumaVolRecepcion", typeof(decimal));
+            dt.Columns.Add("UnidadVol", typeof(string));
+
+            foreach (var agg in dict.Values.OrderByDescending(x => x.SumaVolRecepcion))
             {
-                try { Directory.Delete(tempRoot, true); } catch { }
+                var row = dt.NewRow();
+                row["ClaveSubProducto"] = agg.ClaveSubProducto;
+                row["TotalRecepciones"] = agg.TotalRecepciones;
+                row["TotalDocumentos"] = agg.TotalDocumentos;
+                row["SumaCompras"] = agg.SumaCompras;
+                row["SumaVolRecepcion"] = agg.SumaVolRecepcion;
+                row["UnidadVol"] = agg.UnidadVol;
+                dt.Rows.Add(row);
+            }
+
+            return dt;
+        }
+
+        private class Agg
+        {
+            public string ClaveSubProducto;
+            public int TotalRecepciones;
+            public int TotalDocumentos;
+            public decimal SumaCompras;
+            public decimal SumaVolRecepcion;
+
+            private string _unidad;
+            private bool _mix;
+
+            public void RegisterUnidad(string unidad)
+            {
+                if (_mix) return;
+                if (_unidad == null) _unidad = unidad;
+                else if (!string.Equals(_unidad, unidad, StringComparison.OrdinalIgnoreCase))
+                    _mix = true;
+            }
+
+            public string UnidadVol
+            {
+                get { return _mix ? "MIX" : (_unidad ?? ""); }
             }
         }
 
         // ==========================
-        //  Buscar JSON + extraer ZIP/RAR recursivo
+        //  VENTA: detalle CFDIs desde ENTREGAS
+        //  Columnas requeridas:
+        //  RfcClienteOProveedor, NombreClienteOProveedor, Cfdi, FechaYHoraTransaccion, ValorNumerico
+        // ==========================
+        private DataTable BuildVentasTable(List<ReportItem> items)
+        {
+            var dt = new DataTable();
+
+            // Requeridas
+            dt.Columns.Add("RfcClienteOProveedor", typeof(string));
+            dt.Columns.Add("NombreClienteOProveedor", typeof(string));
+            dt.Columns.Add("Cfdi", typeof(string));
+            dt.Columns.Add("FechaYHoraTransaccion", typeof(string));
+            dt.Columns.Add("ValorNumerico", typeof(decimal));
+
+            // Extra útil “obtenido de EDSReport” (si no lo quieres, lo borras)
+            dt.Columns.Add("RFCContribuyente", typeof(string));
+            dt.Columns.Add("NumPermiso", typeof(string));
+            dt.Columns.Add("FechaCorte", typeof(string));
+            dt.Columns.Add("ClaveSubProducto", typeof(string));
+            dt.Columns.Add("ClaveProducto", typeof(string));
+            dt.Columns.Add("SourceFile", typeof(string));
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                var r = item.Report;
+                if (r == null || r.Producto == null) continue;
+
+                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
+                {
+                    var p = r.Producto[pIndex];
+                    if (p == null) continue;
+
+                    if (p.Tanque == null) continue;
+
+                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
+                    {
+                        var t = p.Tanque[tIndex];
+                        if (t == null || t.Entregas == null || t.Entregas.Entrega == null) continue;
+
+                        for (int eIndex = 0; eIndex < t.Entregas.Entrega.Count; eIndex++)
+                        {
+                            var entrega = t.Entregas.Entrega[eIndex];
+                            if (entrega == null || entrega.Complemento == null) continue;
+
+                            var comp = entrega.Complemento;
+                            if (comp.Nacional == null) continue;
+
+                            for (int nIndex = 0; nIndex < comp.Nacional.Count; nIndex++)
+                            {
+                                var nac = comp.Nacional[nIndex];
+                                if (nac == null || nac.CFDIs == null) continue;
+
+                                for (int cIndex = 0; cIndex < nac.CFDIs.Count; cIndex++)
+                                {
+                                    var cfdi = nac.CFDIs[cIndex];
+                                    if (cfdi == null) continue;
+
+                                    var row = dt.NewRow();
+
+                                    row["RfcClienteOProveedor"] = nac.RfcClienteOProveedor ?? "";
+                                    row["NombreClienteOProveedor"] = nac.NombreClienteOProveedor ?? "";
+                                    row["Cfdi"] = cfdi.Cfdi ?? "";
+                                    row["FechaYHoraTransaccion"] = cfdi.FechaYHoraTransaccion.HasValue
+                                        ? cfdi.FechaYHoraTransaccion.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                                        : "";
+
+                                    // ValorNumerico: volumen documentado
+                                    decimal vol = 0m;
+                                    if (cfdi.VolumenDocumentado != null)
+                                        vol = cfdi.VolumenDocumentado.ValorNumerico;
+
+                                    row["ValorNumerico"] = vol;
+
+                                    // Extras
+                                    row["RFCContribuyente"] = r.RfcContribuyente ?? "";
+                                    row["NumPermiso"] = r.NumPermiso ?? "";
+                                    row["FechaCorte"] = r.FechaYHoraCorte.HasValue ? r.FechaYHoraCorte.Value.ToString("yyyy-MM-dd HH:mm") : "";
+                                    row["ClaveSubProducto"] = p.ClaveSubProducto ?? "";
+                                    row["ClaveProducto"] = p.ClaveProducto ?? "";
+                                    row["SourceFile"] = Path.GetFileName(item.SourceFile);
+
+                                    dt.Rows.Add(row);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return dt;
+        }
+
+        // ==========================
+        //  Cargar reportes (EDSReport)
+        // ==========================
+        private List<ReportItem> LoadReports(List<string> jsonFiles)
+        {
+            var list = new List<ReportItem>();
+
+            for (int i = 0; i < jsonFiles.Count; i++)
+            {
+                var jsonPath = jsonFiles[i];
+                try
+                {
+                    var report = DeserializeTyped(jsonPath);
+                    if (report != null)
+                    {
+                        list.Add(new ReportItem
+                        {
+                            SourceFile = jsonPath,
+                            Report = report
+                        });
+                    }
+                }
+                catch
+                {
+                    // Ignora jsons con error de parse (si quieres, log)
+                }
+            }
+
+            return list;
+        }
+
+        private EDSReport DeserializeTyped(string jsonPath)
+        {
+            var json = File.ReadAllText(jsonPath);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return JsonSerializer.Deserialize<EDSReport>(json, options);
+        }
+
+        // ==========================
+        //  CollectJsonFilesRecursive (SIN duplicados)
+        //  + extracción segura ya la tienes; úsala aquí
         // ==========================
         private List<string> CollectJsonFilesRecursive(string rootFolder, string tempRoot)
         {
@@ -235,32 +493,23 @@ namespace Presentacion
                 try { fullPath = Path.GetFullPath(path); }
                 catch { return; }
 
-                // Evita re-entrar al mismo folder
                 if (!visitedFolders.Add(fullPath))
                     return;
 
-                // Archivos del directorio actual (enumerar una sola vez)
-                IEnumerable<string> files;
-                try
-                {
-                    files = SafeEnumerateFiles(path).ToList(); // materializa para no enumerar 2 veces
-                }
-                catch
-                {
-                    files = Enumerable.Empty<string>();
-                }
+                List<string> files;
+                try { files = SafeEnumerateFiles(path).ToList(); }
+                catch { files = new List<string>(); }
 
-                foreach (var f in files)
+                for (int i = 0; i < files.Count; i++)
                 {
                     if (chkStopOnFirstJson.Checked && foundJson.Count > 0) return;
 
+                    var f = files[i];
                     var ext = Path.GetExtension(f);
 
                     if (ext.Equals(".json", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (foundSet.Add(f))
-                            foundJson.Add(f);
-
+                        if (foundSet.Add(f)) foundJson.Add(f);
                         if (chkStopOnFirstJson.Checked) return;
                     }
                     else if (IsArchive(f))
@@ -273,7 +522,6 @@ namespace Presentacion
 
                         ExtractArchiveSafe(f, extractTo);
 
-                        // JSON extraídos (dedupe)
                         var extractedJsons = SafeEnumerateFilesDeep(extractTo)
                             .Where(x => Path.GetExtension(x).Equals(".json", StringComparison.OrdinalIgnoreCase))
                             .ToList();
@@ -287,33 +535,28 @@ namespace Presentacion
                             }
                             else
                             {
-                                foreach (var j in extractedJsons)
+                                for (int k = 0; k < extractedJsons.Count; k++)
+                                {
+                                    var j = extractedJsons[k];
                                     if (foundSet.Add(j)) foundJson.Add(j);
+                                }
                             }
 
                             if (chkStopOnFirstJson.Checked && foundJson.Count > 0) return;
                         }
 
-                        // Busca archives anidados dentro de lo extraído
                         walk(extractTo);
                     }
                 }
 
-                // Subcarpetas (ojo: no vuelvas a caminar folders ya visitados)
-                IEnumerable<string> dirs;
-                try
-                {
-                    dirs = SafeEnumerateDirectories(path).ToList();
-                }
-                catch
-                {
-                    dirs = Enumerable.Empty<string>();
-                }
+                List<string> dirs;
+                try { dirs = SafeEnumerateDirectories(path).ToList(); }
+                catch { dirs = new List<string>(); }
 
-                foreach (var d in dirs)
+                for (int i = 0; i < dirs.Count; i++)
                 {
                     if (chkStopOnFirstJson.Checked && foundJson.Count > 0) return;
-                    walk(d);
+                    walk(dirs[i]);
                 }
             };
 
@@ -321,6 +564,14 @@ namespace Presentacion
             return foundJson;
         }
 
+        private bool IsArchive(string filePath)
+        {
+            var ext = Path.GetExtension(filePath);
+            for (int i = 0; i < _archiveExtensions.Length; i++)
+                if (_archiveExtensions[i].Equals(ext, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
 
         private IEnumerable<string> SafeEnumerateFiles(string folder)
         {
@@ -336,7 +587,6 @@ namespace Presentacion
 
         private IEnumerable<string> SafeEnumerateFilesDeep(string folder)
         {
-            // enumeración recursiva "segura"
             var stack = new Stack<string>();
             stack.Push(folder);
 
@@ -350,17 +600,6 @@ namespace Presentacion
                 foreach (var d in SafeEnumerateDirectories(current))
                     stack.Push(d);
             }
-        }
-
-        private bool IsArchive(string filePath)
-        {
-            var ext = Path.GetExtension(filePath);
-            for (int i = 0; i < _archiveExtensions.Length; i++)
-            {
-                if (_archiveExtensions[i].Equals(ext, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-            return false;
         }
 
         // ==========================
@@ -381,7 +620,6 @@ namespace Presentacion
                     var baseFull = Path.GetFullPath(destinationFolder);
                     var outPath = Path.GetFullPath(Path.Combine(destinationFolder, relative));
 
-                    // Evita path traversal
                     if (!outPath.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
                         continue;
 
@@ -389,7 +627,6 @@ namespace Presentacion
                     if (!string.IsNullOrWhiteSpace(outDir))
                         Directory.CreateDirectory(outDir);
 
-                    // Extraer manualmente (evita problemas con ExtractFullPath)
                     using (var inStream = entry.OpenEntryStream())
                     using (var outStream = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
@@ -408,11 +645,9 @@ namespace Presentacion
 
             if (parts.Count == 0) return null;
 
-            // limpiar por segmento
             for (int i = 0; i < parts.Count; i++)
                 parts[i] = SanitizeFileName(parts[i]);
 
-            // acortar nombre final si es enorme
             int lastIndex = parts.Count - 1;
             var fileName = parts[lastIndex];
 
@@ -423,7 +658,6 @@ namespace Presentacion
                 parts[lastIndex] = Hash8(name) + ext;
             }
 
-            // limita profundidad (últimas 6 carpetas + archivo)
             if (parts.Count > 7)
                 parts = parts.Skip(parts.Count - 7).ToList();
 
@@ -455,247 +689,17 @@ namespace Presentacion
             }
         }
 
-        // ==========================
-        //  Cargar lista de objetos (EDSReport)
-        // ==========================
-        private List<ReportItem> LoadReports(List<string> jsonFiles)
+        private void dgvInventario_DataSourceChanged(object sender, EventArgs e)
         {
-            var list = new List<ReportItem>();
+            if (dgvInventario.DataSource == null) return;
+            tsTotalRegistrosInventario.Text = $"{dgvInventario.Rows.Count:N0}";
 
-            for (int i = 0; i < jsonFiles.Count; i++)
-            {
-                var jsonPath = jsonFiles[i];
-                try
-                {
-                    var report = DeserializeTyped(jsonPath);
-                    if (report != null)
-                    {
-                        list.Add(new ReportItem
-                        {
-                            SourceFile = jsonPath,
-                            Report = report
-                        });
-                    }
-                }
-                catch
-                {
-                    // si quieres, aquí podrías loguear el archivo fallido
-                }
-            }
-
-            return list;
         }
 
-        private EDSReport DeserializeTyped(string jsonPath)
+        private void dgvVenta_DataSourceChanged(object sender, EventArgs e)
         {
-            var json = File.ReadAllText(jsonPath);
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            return JsonSerializer.Deserialize<EDSReport>(json, options);
+            if (dgvVenta.DataSource == null) return;
+            tsTotalRegistrosVenta.Text = $"{dgvVenta.Rows.Count:N0}";
         }
-
-        // ==========================
-        //  Resumen: agrupar Producto y sumar Recepciones
-        // ==========================
-        private DataTable BuildProductSummaryTable(List<ReportItem> items)
-        {
-            var dt = new DataTable();
-            dt.Columns.Add("Archivo", typeof(string));
-            dt.Columns.Add("RFC", typeof(string));
-            dt.Columns.Add("Permiso", typeof(string));
-            dt.Columns.Add("FechaCorte", typeof(string));
-
-            dt.Columns.Add("ClaveProducto", typeof(string));
-            dt.Columns.Add("ClaveSubProducto", typeof(string));
-
-            dt.Columns.Add("TotalRecepciones", typeof(int));
-            dt.Columns.Add("TotalDocumentos", typeof(int));
-            dt.Columns.Add("SumaCompras", typeof(decimal));
-            dt.Columns.Add("SumaVolRecepcion", typeof(decimal));
-            dt.Columns.Add("UnidadVol", typeof(string));
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                var r = item.Report;
-                if (r == null || r.Producto == null) continue;
-
-                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
-                {
-                    var p = r.Producto[pIndex];
-                    if (p == null) continue;
-
-                    int totalRecep = 0;
-                    int totalDocs = 0;
-                    decimal sumaCompras = 0m;
-                    decimal sumaVol = 0m;
-
-                    string unidad = null;
-                    bool unidadMix = false;
-
-                    if (p.Tanque != null)
-                    {
-                        for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
-                        {
-                            var t = p.Tanque[tIndex];
-                            if (t == null || t.Recepciones == null) continue;
-
-                            totalRecep += (t.Recepciones.TotalRecepciones ?? 0);
-                            totalDocs += (t.Recepciones.TotalDocumentos ?? 0);
-                            sumaCompras += (t.Recepciones.SumaCompras ?? 0m);
-
-                            if (t.Recepciones.SumaVolumenRecepcion != null)
-                            {
-                                sumaVol += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
-
-                                var u = t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida;
-                                if (!string.IsNullOrWhiteSpace(u))
-                                {
-                                    if (unidad == null) unidad = u;
-                                    else if (!string.Equals(unidad, u, StringComparison.OrdinalIgnoreCase))
-                                        unidadMix = true;
-                                }
-                            }
-                        }
-                    }
-
-                    var row = dt.NewRow();
-                    row["Archivo"] = Path.GetFileName(item.SourceFile);
-                    row["RFC"] = r.RfcContribuyente ?? "";
-                    row["Permiso"] = r.NumPermiso ?? "";
-                    row["FechaCorte"] = (r.FechaYHoraCorte.HasValue ? r.FechaYHoraCorte.Value.ToString("yyyy-MM-dd HH:mm") : "");
-
-                    row["ClaveProducto"] = p.ClaveProducto ?? "";
-                    row["ClaveSubProducto"] = p.ClaveSubProducto ?? "";
-
-                    row["TotalRecepciones"] = totalRecep;
-                    row["TotalDocumentos"] = totalDocs;
-                    row["SumaCompras"] = sumaCompras;
-                    row["SumaVolRecepcion"] = sumaVol;
-                    row["UnidadVol"] = unidadMix ? "MIX" : (unidad ?? "");
-
-                    dt.Rows.Add(row);
-                }
-            }
-
-            return dt;
-        }
-
-
-        private DataTable BuildSubProductoSummaryTable(List<ReportItem> items)
-        {
-            // 1) acumuladores por ClaveSubProducto
-            var dict = new Dictionary<string, Agg>(StringComparer.OrdinalIgnoreCase);
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                var r = items[i].Report;
-                if (r == null || r.Producto == null) continue;
-
-                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
-                {
-                    var p = r.Producto[pIndex];
-                    if (p == null) continue;
-
-                    var key = (p.ClaveSubProducto ?? "").Trim();
-                    if (key.Length == 0) key = "(SIN_CLAVESUBPRODUCTO)";
-
-                    Agg agg;
-                    if (!dict.TryGetValue(key, out agg))
-                    {
-                        agg = new Agg { ClaveSubProducto = key };
-                        dict[key] = agg;
-                    }
-
-                    // suma por tanques/recepciones
-                    if (p.Tanque == null) continue;
-
-                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
-                    {
-                        var t = p.Tanque[tIndex];
-                        if (t == null || t.Recepciones == null) continue;
-
-                        agg.TotalRecepciones += (t.Recepciones.TotalRecepciones ?? 0);
-                        agg.TotalDocumentos += (t.Recepciones.TotalDocumentos ?? 0);
-                        agg.SumaCompras += (t.Recepciones.SumaCompras ?? 0m);
-
-                        if (t.Recepciones.SumaVolumenRecepcion != null)
-                        {
-                            agg.SumaVolRecepcion += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
-
-                            var u = t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida;
-                            if (!string.IsNullOrWhiteSpace(u))
-                                agg.RegisterUnidad(u);
-                        }
-                    }
-                }
-            }
-
-            // 2) DataTable para el DGV
-            var dt = new DataTable();
-            dt.Columns.Add("ClaveSubProducto", typeof(string));
-            dt.Columns.Add("TotalRecepciones", typeof(int));
-            dt.Columns.Add("TotalDocumentos", typeof(int));
-            dt.Columns.Add("SumaCompras", typeof(decimal));
-            dt.Columns.Add("SumaVolRecepcion", typeof(decimal));
-            dt.Columns.Add("UnidadVol", typeof(string));
-
-            // 3) cargar filas ordenadas (por ejemplo por SumaVolRecepcion desc)
-            foreach (var agg in dict.Values.OrderByDescending(x => x.SumaVolRecepcion))
-            {
-                var row = dt.NewRow();
-                row["ClaveSubProducto"] = agg.ClaveSubProducto;
-                row["TotalRecepciones"] = agg.TotalRecepciones;
-                row["TotalDocumentos"] = agg.TotalDocumentos;
-                row["SumaCompras"] = agg.SumaCompras;
-                row["SumaVolRecepcion"] = agg.SumaVolRecepcion;
-                row["UnidadVol"] = agg.UnidadVol;
-                dt.Rows.Add(row);
-            }
-
-            return dt;
-        }
-
-        // Clase auxiliar de acumulación
-        private class Agg
-        {
-            public string ClaveSubProducto;
-            public int TotalRecepciones;
-            public int TotalDocumentos;
-            public decimal SumaCompras;
-            public decimal SumaVolRecepcion;
-
-            private string _unidad;
-            private bool _mix;
-
-            public void RegisterUnidad(string unidad)
-            {
-                if (_mix) return;
-
-                if (_unidad == null) _unidad = unidad;
-                else if (!string.Equals(_unidad, unidad, StringComparison.OrdinalIgnoreCase))
-                    _mix = true;
-            }
-
-            public string UnidadVol
-            {
-                get
-                {
-                    if (_mix) return "MIX";
-                    return _unidad ?? "";
-                }
-            }
-        }
-
-
-
-
-
-
     }
 }
-
