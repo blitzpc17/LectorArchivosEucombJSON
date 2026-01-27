@@ -523,8 +523,7 @@ namespace Presentacion
         {
             if (string.IsNullOrWhiteSpace(cfdi)) return "";
             var s = cfdi.Trim();
-            if (s.Length <= 12) return s;
-            return s.Substring(0, 8) + "...";
+            return s.Length.ToString("N0");
         }
 
         // =========================
@@ -860,6 +859,24 @@ namespace Presentacion
                 var hex = BitConverter.ToString(bytes).Replace("-", "");
                 return hex.Substring(0, 8);
             }
+        }
+
+        private void dgvResumenProducto_DataSourceChanged(object sender, EventArgs e)
+        {
+            if (dgvResumenProducto.DataSource == null) return;
+            tsTotalProductos.Text = dgvResumenProducto.RowCount.ToString("N0");
+        }
+
+        private void dgvRecepciones_DataSourceChanged(object sender, EventArgs e)
+        {
+            if(dgvRecepciones.DataSource == null) return;
+            tsTotalRecepciones.Text = dgvRecepciones.RowCount.ToString("N0");
+        }
+
+        private void dgvVenta_DataSourceChanged(object sender, EventArgs e)
+        {
+            if(dgvVenta.DataSource == null) return;
+            tsTotalVentas.Text = dgvVenta.RowCount.ToString("N0");
         }
     }
 }
