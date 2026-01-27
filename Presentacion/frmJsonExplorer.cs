@@ -19,8 +19,11 @@ namespace Presentacion
     {
         private readonly string[] _archiveExtensions = new[] { ".zip", ".rar" };
 
-        private DataTable _inventoryTable;
-        private DataTable _salesTable;
+        private List<ReportItem> _reports = new List<ReportItem>();
+
+        private DataTable _dtResumenProducto;
+        private DataTable _dtRecepciones;
+        private DataTable _dtVenta;
 
         private class ReportItem
         {
@@ -35,8 +38,11 @@ namespace Presentacion
 
         private void frmJsonExplorer_Load(object sender, EventArgs e)
         {
-            SetupGrid(dgvInventario);
+            SetupGrid(dgvResumenProducto);
+            SetupGrid(dgvRecepciones);
             SetupGrid(dgvVenta);
+
+            ClearDatosGenerales();
 
             lblStatus.Text = "Listo.";
             progressBar.Style = ProgressBarStyle.Blocks;
@@ -48,8 +54,20 @@ namespace Presentacion
             dgv.AutoGenerateColumns = true;
             dgv.AllowUserToAddRows = false;
             dgv.AllowUserToDeleteRows = false;
-            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgv.ReadOnly = true;
+            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        }
+
+        private void ClearDatosGenerales()
+        {
+            txtInstalacion.Text = "";
+            txtVersion.Text = "";
+            txtRfcContribuyente.Text = "";
+            txtRfcProveedor.Text = "";
+            txtRfcRepresentante.Text = "";
+            txtCaracter.Text = "";
+            txtModalidadPermiso.Text = "";
+            txtNumPermiso.Text = "";
         }
 
         private void btnBrowse_Click(object sender, EventArgs e)
@@ -77,28 +95,43 @@ namespace Presentacion
             btnProcess.Enabled = false;
             btnExport.Enabled = false;
 
-            dgvInventario.DataSource = null;
+            ClearDatosGenerales();
+
+            dgvResumenProducto.DataSource = null;
+            dgvRecepciones.DataSource = null;
             dgvVenta.DataSource = null;
-            _inventoryTable = null;
-            _salesTable = null;
+
+            _dtResumenProducto = null;
+            _dtRecepciones = null;
+            _dtVenta = null;
+            _reports = new List<ReportItem>();
 
             progressBar.Style = ProgressBarStyle.Marquee;
             lblStatus.Text = "Procesando...";
 
             try
             {
-                var result = await Task.Run(() => LoadAllTables(folder));
+                var result = await Task.Run(() => LoadAll(folder));
 
-                _inventoryTable = result.Item1;
-                _salesTable = result.Item2;
+                _reports = result.Reports;
 
-                dgvInventario.DataSource = _inventoryTable;
-                dgvVenta.DataSource = _salesTable;
+                // Datos generales: si hay muchos json, tomamos el primero como "cabecera"
+                FillDatosGenerales(_reports.Count > 0 ? _reports[0].Report : null);
 
-                btnExport.Enabled = ((_inventoryTable != null && _inventoryTable.Rows.Count > 0) ||
-                                     (_salesTable != null && _salesTable.Rows.Count > 0));
+                _dtResumenProducto = result.ResumenProducto;
+                _dtRecepciones = result.Recepciones;
+                _dtVenta = result.Venta;
 
-                lblStatus.Text = $"Listo. Inventario: {_inventoryTable.Rows.Count:N0} filas | Venta: {_salesTable.Rows.Count:N0} filas";
+                dgvResumenProducto.DataSource = _dtResumenProducto;
+                dgvRecepciones.DataSource = _dtRecepciones;
+                dgvVenta.DataSource = _dtVenta;
+
+                btnExport.Enabled =
+                    (_dtResumenProducto != null && _dtResumenProducto.Rows.Count > 0) ||
+                    (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0) ||
+                    (_dtVenta != null && _dtVenta.Rows.Count > 0);
+
+                lblStatus.Text = $"Listo. Resumen: {_dtResumenProducto.Rows.Count:N0} | Recepciones: {_dtRecepciones.Rows.Count:N0} | Venta: {_dtVenta.Rows.Count:N0}";
             }
             catch (Exception ex)
             {
@@ -113,80 +146,77 @@ namespace Presentacion
             }
         }
 
-        private Tuple<DataTable, DataTable> LoadAllTables(string rootFolder)
+        private void FillDatosGenerales(EDSReport r)
         {
-            var tempRoot = Path.Combine(Path.GetTempPath(), "JX", Guid.NewGuid().ToString("N").Substring(0, 8));
-            Directory.CreateDirectory(tempRoot);
+            if (r == null) return;
 
-            try
-            {
-                var jsonFiles = CollectJsonFilesRecursive(rootFolder, tempRoot);
+            var instalacion = ((r.ClaveInstalacion ?? "").Trim() + " - " + (r.DescripcionInstalacion ?? "").Trim()).Trim(' ', '-');
 
-                if (jsonFiles.Count == 0)
-                    throw new InvalidOperationException("No se encontró ningún .json (ni dentro de .zip/.rar).");
-
-                if (chkStopOnFirstJson.Checked)
-                    jsonFiles = jsonFiles.Take(1).ToList();
-
-                var reports = LoadReports(jsonFiles);
-
-                if (reports.Count == 0)
-                    throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
-
-                // Inventario consolidado por ClaveSubProducto
-                var inv = BuildSubProductoSummaryTable(reports);
-
-                // Venta (detalle CFDIs)
-                var sales = BuildVentasTable(reports);
-
-                return Tuple.Create(inv, sales);
-            }
-            finally
-            {
-                try { Directory.Delete(tempRoot, true); } catch { }
-            }
+            txtInstalacion.Text = instalacion;
+            txtVersion.Text = r.Version ?? "";
+            txtRfcContribuyente.Text = r.RfcContribuyente ?? "";
+            txtRfcProveedor.Text = r.RfcProveedor ?? "";
+            txtRfcRepresentante.Text = r.RfcRepresentanteLegal ?? "";
+            txtCaracter.Text = r.Caracter ?? "";
+            txtModalidadPermiso.Text = r.ModalidadPermiso ?? "";
+            txtNumPermiso.Text = r.NumPermiso ?? "";
         }
 
-        // ==========================
-        //  EXPORT: exporta TAB ACTIVO
-        // ==========================
+        // =========================
+        // EXPORT: exporta el grid principal del TAB ACTIVO
+        // Inventario: exporta Recepciones (CFDI) si está seleccionado el group (por simplicidad exporta el que tenga filas > 0),
+        // Venta: exporta dgvVenta.
+        // =========================
         private void btnExport_Click(object sender, EventArgs e)
         {
             DataTable table;
-            string defaultName;
+            string sheetName;
+            string defaultFile;
 
-            if (tabMain.SelectedTab == tabInventario)
+            if (tabMain.SelectedTab == tabVenta)
             {
-                table = _inventoryTable;
-                defaultName = "Inventario_Resumen.xlsx";
+                table = _dtVenta;
+                sheetName = "Venta";
+                defaultFile = "Venta.xlsx";
             }
             else
             {
-                table = _salesTable;
-                defaultName = "Venta_Detalle.xlsx";
+                // En inventario te conviene exportar Recepciones (detalle CFDI).
+                // Si no hay, exporta resumen.
+                if (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0)
+                {
+                    table = _dtRecepciones;
+                    sheetName = "Recepciones";
+                    defaultFile = "Recepciones.xlsx";
+                }
+                else
+                {
+                    table = _dtResumenProducto;
+                    sheetName = "ResumenProducto";
+                    defaultFile = "ResumenProducto.xlsx";
+                }
             }
 
             if (table == null || table.Rows.Count == 0)
             {
-                MessageBox.Show("No hay datos para exportar en este tab.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("No hay datos para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             using (var sfd = new SaveFileDialog())
             {
                 sfd.Filter = "Excel (*.xlsx)|*.xlsx";
-                sfd.FileName = defaultName;
+                sfd.FileName = defaultFile;
+
                 if (sfd.ShowDialog() != DialogResult.OK) return;
 
                 using (var wb = new XLWorkbook())
                 {
-                    var ws = wb.Worksheets.Add(tabMain.SelectedTab.Text);
+                    var ws = wb.Worksheets.Add(sheetName);
 
-                    // Encabezados
                     for (int c = 0; c < table.Columns.Count; c++)
                         ws.Cell(1, c + 1).SetValue(table.Columns[c].ColumnName);
 
-                    // Datos
                     for (int r = 0; r < table.Rows.Count; r++)
                     {
                         for (int c = 0; c < table.Columns.Count; c++)
@@ -240,12 +270,67 @@ namespace Presentacion
             cell.SetValue(value.ToString());
         }
 
-        // ==========================
-        //  INVENTARIO: agrupado por ClaveSubProducto (sumatorias)
-        // ==========================
-        private DataTable BuildSubProductoSummaryTable(List<ReportItem> items)
+        // =========================
+        // PIPELINE: cargar reportes + construir tablas inventario/recepciones/venta
+        // =========================
+        private LoadResult LoadAll(string rootFolder)
         {
-            var dict = new Dictionary<string, Agg>(StringComparer.OrdinalIgnoreCase);
+            var tempRoot = Path.Combine(Path.GetTempPath(), "JX", Guid.NewGuid().ToString("N").Substring(0, 8));
+            Directory.CreateDirectory(tempRoot);
+
+            try
+            {
+                var jsonFiles = CollectJsonFilesRecursive(rootFolder, tempRoot);
+                if (jsonFiles.Count == 0)
+                    throw new InvalidOperationException("No se encontró ningún .json (ni dentro de .zip/.rar).");
+
+                if (chkStopOnFirstJson.Checked)
+                    jsonFiles = jsonFiles.Take(1).ToList();
+
+                var reports = LoadReports(jsonFiles);
+                if (reports.Count == 0)
+                    throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
+
+                // Inventario: resumen por producto (subproducto)
+                var dtResumen = BuildResumenProducto(reports);
+
+                // Inventario: detalle recepciones CFDI (desde Recepcion.Complemento.Nacional.CFDIs)
+                var dtRecep = BuildRecepcionesCfdiTable(reports);
+
+                // Venta: detalle de entregas (si ya lo tenías)
+                var dtVenta = BuildVentasTable(reports);
+
+                return new LoadResult
+                {
+                    Reports = reports,
+                    ResumenProducto = dtResumen,
+                    Recepciones = dtRecep,
+                    Venta = dtVenta
+                };
+            }
+            finally
+            {
+                try { Directory.Delete(tempRoot, true); } catch { }
+            }
+        }
+
+        private class LoadResult
+        {
+            public List<ReportItem> Reports { get; set; }
+            public DataTable ResumenProducto { get; set; }
+            public DataTable Recepciones { get; set; }
+            public DataTable Venta { get; set; }
+        }
+
+        // =========================
+        // RESUMEN POR PRODUCTO (por ClaveSubProducto):
+        // - Inventario final del mes: sumatoria Existencias.VolumenExistencias
+        // - Veces que entró producto: conteo CFDIs en Recepciones relacionados al subproducto
+        // - Total litros factura: sumatoria Recepcion.VolumenRecepcion.ValorNumerico
+        // =========================
+        private DataTable BuildResumenProducto(List<ReportItem> items)
+        {
+            var dict = new Dictionary<string, ResProdAgg>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < items.Count; i++)
             {
@@ -260,10 +345,10 @@ namespace Presentacion
                     var key = (p.ClaveSubProducto ?? "").Trim();
                     if (key.Length == 0) key = "(SIN_CLAVESUBPRODUCTO)";
 
-                    Agg agg;
+                    ResProdAgg agg;
                     if (!dict.TryGetValue(key, out agg))
                     {
-                        agg = new Agg { ClaveSubProducto = key };
+                        agg = new ResProdAgg { ClaveSubProducto = key };
                         dict[key] = agg;
                     }
 
@@ -272,18 +357,28 @@ namespace Presentacion
                     for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
                     {
                         var t = p.Tanque[tIndex];
-                        if (t == null || t.Recepciones == null) continue;
+                        if (t == null) continue;
 
-                        agg.TotalRecepciones += (t.Recepciones.TotalRecepciones ?? 0);
-                        agg.TotalDocumentos += (t.Recepciones.TotalDocumentos ?? 0);
-                        agg.SumaCompras += (t.Recepciones.SumaCompras ?? 0m);
+                        // Inventario al final (Existencias.VolumenExistencias)
+                        if (t.Existencias != null && t.Existencias.VolumenExistencias.HasValue)
+                            agg.InventarioFinal += t.Existencias.VolumenExistencias.Value;
 
-                        if (t.Recepciones.SumaVolumenRecepcion != null)
+                        // Total litros factura (sum Recepcion.VolumenRecepcion.ValorNumerico)
+                        // Veces que entró: conteo de CFDIs en recepciones
+                        if (t.Recepciones != null && t.Recepciones.Recepcion != null)
                         {
-                            agg.SumaVolRecepcion += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
-                            var u = t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida;
-                            if (!string.IsNullOrWhiteSpace(u))
-                                agg.RegisterUnidad(u);
+                            for (int rx = 0; rx < t.Recepciones.Recepcion.Count; rx++)
+                            {
+                                var rec = t.Recepciones.Recepcion[rx];
+                                if (rec == null) continue;
+
+                                if (rec.VolumenRecepcion != null)
+                                    agg.TotalLitrosFactura += rec.VolumenRecepcion.ValorNumerico;
+
+                                // Conteo CFDIs en complemento
+                                int cfdisCount = CountCfdis(rec);
+                                agg.NumEntradas += cfdisCount;
+                            }
                         }
                     }
                 }
@@ -291,69 +386,162 @@ namespace Presentacion
 
             var dt = new DataTable();
             dt.Columns.Add("ClaveSubProducto", typeof(string));
-            dt.Columns.Add("TotalRecepciones", typeof(int));
-            dt.Columns.Add("TotalDocumentos", typeof(int));
-            dt.Columns.Add("SumaCompras", typeof(decimal));
-            dt.Columns.Add("SumaVolRecepcion", typeof(decimal));
-            dt.Columns.Add("UnidadVol", typeof(string));
+            dt.Columns.Add("InventarioFinalMes", typeof(decimal));
+            dt.Columns.Add("NumVecesEntroProducto", typeof(int));
+            dt.Columns.Add("TotalLitrosFactura", typeof(decimal));
 
-            foreach (var agg in dict.Values.OrderByDescending(x => x.SumaVolRecepcion))
+            foreach (var agg in dict.Values.OrderBy(x => x.ClaveSubProducto))
             {
                 var row = dt.NewRow();
                 row["ClaveSubProducto"] = agg.ClaveSubProducto;
-                row["TotalRecepciones"] = agg.TotalRecepciones;
-                row["TotalDocumentos"] = agg.TotalDocumentos;
-                row["SumaCompras"] = agg.SumaCompras;
-                row["SumaVolRecepcion"] = agg.SumaVolRecepcion;
-                row["UnidadVol"] = agg.UnidadVol;
+                row["InventarioFinalMes"] = agg.InventarioFinal;
+                row["NumVecesEntroProducto"] = agg.NumEntradas;
+                row["TotalLitrosFactura"] = agg.TotalLitrosFactura;
                 dt.Rows.Add(row);
             }
 
             return dt;
         }
 
-        private class Agg
+        private class ResProdAgg
         {
             public string ClaveSubProducto;
-            public int TotalRecepciones;
-            public int TotalDocumentos;
-            public decimal SumaCompras;
-            public decimal SumaVolRecepcion;
-
-            private string _unidad;
-            private bool _mix;
-
-            public void RegisterUnidad(string unidad)
-            {
-                if (_mix) return;
-                if (_unidad == null) _unidad = unidad;
-                else if (!string.Equals(_unidad, unidad, StringComparison.OrdinalIgnoreCase))
-                    _mix = true;
-            }
-
-            public string UnidadVol
-            {
-                get { return _mix ? "MIX" : (_unidad ?? ""); }
-            }
+            public decimal InventarioFinal;
+            public int NumEntradas;
+            public decimal TotalLitrosFactura;
         }
 
-        // ==========================
-        //  VENTA: detalle CFDIs desde ENTREGAS
-        //  Columnas requeridas:
-        //  RfcClienteOProveedor, NombreClienteOProveedor, Cfdi, FechaYHoraTransaccion, ValorNumerico
-        // ==========================
+        private int CountCfdis(Recepcion rec)
+        {
+            if (rec == null || rec.Complemento == null || rec.Complemento.Nacional == null) return 0;
+
+            int count = 0;
+            for (int i = 0; i < rec.Complemento.Nacional.Count; i++)
+            {
+                var nac = rec.Complemento.Nacional[i];
+                if (nac == null || nac.CFDIs == null) continue;
+                count += nac.CFDIs.Count;
+            }
+            return count;
+        }
+
+        // =========================
+        // RECEPCIONES CFDI (DETALLE)
+        // Columnas:
+        // # (NumeroDeRegistro), Nombre cliente, RFC Cliente proveedor, CFDI, Long., Fecha y hora,
+        // Precio Compra, Precio Venta Publico, Valor numerico
+        // =========================
+        private DataTable BuildRecepcionesCfdiTable(List<ReportItem> items)
+        {
+            var dt = new DataTable();
+
+            dt.Columns.Add("#", typeof(int));
+            dt.Columns.Add("NombreCliente", typeof(string));
+            dt.Columns.Add("RfcClienteOProveedor", typeof(string));
+            dt.Columns.Add("CFDI", typeof(string));
+            dt.Columns.Add("Long.", typeof(string));
+            dt.Columns.Add("FechaYHora", typeof(string));
+            dt.Columns.Add("PrecioCompra", typeof(decimal));
+            dt.Columns.Add("PrecioVentaPublico", typeof(decimal));
+            dt.Columns.Add("ValorNumerico", typeof(decimal));
+
+            // extras opcionales
+            dt.Columns.Add("ClaveSubProducto", typeof(string));
+            dt.Columns.Add("ClaveProducto", typeof(string));
+            dt.Columns.Add("SourceFile", typeof(string));
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                var r = item.Report;
+                if (r == null || r.Producto == null) continue;
+
+                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
+                {
+                    var p = r.Producto[pIndex];
+                    if (p == null || p.Tanque == null) continue;
+
+                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
+                    {
+                        var t = p.Tanque[tIndex];
+                        if (t == null || t.Recepciones == null || t.Recepciones.Recepcion == null) continue;
+
+                        for (int rx = 0; rx < t.Recepciones.Recepcion.Count; rx++)
+                        {
+                            var rec = t.Recepciones.Recepcion[rx];
+                            if (rec == null || rec.Complemento == null || rec.Complemento.Nacional == null) continue;
+
+                            for (int nIndex = 0; nIndex < rec.Complemento.Nacional.Count; nIndex++)
+                            {
+                                var nac = rec.Complemento.Nacional[nIndex];
+                                if (nac == null || nac.CFDIs == null) continue;
+
+                                for (int cIndex = 0; cIndex < nac.CFDIs.Count; cIndex++)
+                                {
+                                    var cfdi = nac.CFDIs[cIndex];
+                                    if (cfdi == null) continue;
+
+                                    var row = dt.NewRow();
+
+                                    row["#"] = rec.NumeroDeRegistro ?? 0;
+                                    row["NombreCliente"] = nac.NombreClienteOProveedor ?? "";
+                                    row["RfcClienteOProveedor"] = nac.RfcClienteOProveedor ?? "";
+                                    row["CFDI"] = cfdi.Cfdi ?? "";
+
+                                    // Long.: si tienes algún campo exacto, cámbialo aquí.
+                                    // Si no existe, dejamos el UUID corto por conveniencia.
+                                    row["Long."] = ShortCfdi(cfdi.Cfdi);
+
+                                    row["FechaYHora"] = cfdi.FechaYHoraTransaccion.HasValue
+                                        ? cfdi.FechaYHoraTransaccion.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                                        : "";
+
+                                    row["PrecioCompra"] = cfdi.PrecioCompra ?? 0m;
+                                    row["PrecioVentaPublico"] = cfdi.PrecioDeVentaAlPublico ?? 0m;
+
+                                    decimal vol = 0m;
+                                    if (cfdi.VolumenDocumentado != null)
+                                        vol = cfdi.VolumenDocumentado.ValorNumerico;
+                                    row["ValorNumerico"] = vol;
+
+                                    row["ClaveSubProducto"] = p.ClaveSubProducto ?? "";
+                                    row["ClaveProducto"] = p.ClaveProducto ?? "";
+                                    row["SourceFile"] = Path.GetFileName(item.SourceFile);
+
+                                    dt.Rows.Add(row);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return dt;
+        }
+
+        private string ShortCfdi(string cfdi)
+        {
+            if (string.IsNullOrWhiteSpace(cfdi)) return "";
+            var s = cfdi.Trim();
+            if (s.Length <= 12) return s;
+            return s.Substring(0, 8) + "...";
+        }
+
+        // =========================
+        // VENTA (de Entregas -> CFDIs)
+        // Deja como estaba, o ajusta a tu necesidad
+        // =========================
         private DataTable BuildVentasTable(List<ReportItem> items)
         {
             var dt = new DataTable();
 
-            // Requeridas
             dt.Columns.Add("RfcClienteOProveedor", typeof(string));
             dt.Columns.Add("NombreClienteOProveedor", typeof(string));
             dt.Columns.Add("Cfdi", typeof(string));
             dt.Columns.Add("FechaYHoraTransaccion", typeof(string));
             dt.Columns.Add("ValorNumerico", typeof(decimal));
 
-            // Extra útil “obtenido de EDSReport” (si no lo quieres, lo borras)
+            // extras
             dt.Columns.Add("RFCContribuyente", typeof(string));
             dt.Columns.Add("NumPermiso", typeof(string));
             dt.Columns.Add("FechaCorte", typeof(string));
@@ -370,9 +558,7 @@ namespace Presentacion
                 for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
                 {
                     var p = r.Producto[pIndex];
-                    if (p == null) continue;
-
-                    if (p.Tanque == null) continue;
+                    if (p == null || p.Tanque == null) continue;
 
                     for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
                     {
@@ -382,14 +568,11 @@ namespace Presentacion
                         for (int eIndex = 0; eIndex < t.Entregas.Entrega.Count; eIndex++)
                         {
                             var entrega = t.Entregas.Entrega[eIndex];
-                            if (entrega == null || entrega.Complemento == null) continue;
+                            if (entrega == null || entrega.Complemento == null || entrega.Complemento.Nacional == null) continue;
 
-                            var comp = entrega.Complemento;
-                            if (comp.Nacional == null) continue;
-
-                            for (int nIndex = 0; nIndex < comp.Nacional.Count; nIndex++)
+                            for (int nIndex = 0; nIndex < entrega.Complemento.Nacional.Count; nIndex++)
                             {
-                                var nac = comp.Nacional[nIndex];
+                                var nac = entrega.Complemento.Nacional[nIndex];
                                 if (nac == null || nac.CFDIs == null) continue;
 
                                 for (int cIndex = 0; cIndex < nac.CFDIs.Count; cIndex++)
@@ -398,22 +581,14 @@ namespace Presentacion
                                     if (cfdi == null) continue;
 
                                     var row = dt.NewRow();
-
                                     row["RfcClienteOProveedor"] = nac.RfcClienteOProveedor ?? "";
                                     row["NombreClienteOProveedor"] = nac.NombreClienteOProveedor ?? "";
                                     row["Cfdi"] = cfdi.Cfdi ?? "";
                                     row["FechaYHoraTransaccion"] = cfdi.FechaYHoraTransaccion.HasValue
                                         ? cfdi.FechaYHoraTransaccion.Value.ToString("yyyy-MM-dd HH:mm:ss")
                                         : "";
+                                    row["ValorNumerico"] = (cfdi.VolumenDocumentado != null) ? cfdi.VolumenDocumentado.ValorNumerico : 0m;
 
-                                    // ValorNumerico: volumen documentado
-                                    decimal vol = 0m;
-                                    if (cfdi.VolumenDocumentado != null)
-                                        vol = cfdi.VolumenDocumentado.ValorNumerico;
-
-                                    row["ValorNumerico"] = vol;
-
-                                    // Extras
                                     row["RFCContribuyente"] = r.RfcContribuyente ?? "";
                                     row["NumPermiso"] = r.NumPermiso ?? "";
                                     row["FechaCorte"] = r.FechaYHoraCorte.HasValue ? r.FechaYHoraCorte.Value.ToString("yyyy-MM-dd HH:mm") : "";
@@ -432,9 +607,9 @@ namespace Presentacion
             return dt;
         }
 
-        // ==========================
-        //  Cargar reportes (EDSReport)
-        // ==========================
+        // =========================
+        // Cargar reportes
+        // =========================
         private List<ReportItem> LoadReports(List<string> jsonFiles)
         {
             var list = new List<ReportItem>();
@@ -456,7 +631,6 @@ namespace Presentacion
                 }
                 catch
                 {
-                    // Ignora jsons con error de parse (si quieres, log)
                 }
             }
 
@@ -470,10 +644,9 @@ namespace Presentacion
             return JsonSerializer.Deserialize<EDSReport>(json, options);
         }
 
-        // ==========================
-        //  CollectJsonFilesRecursive (SIN duplicados)
-        //  + extracción segura ya la tienes; úsala aquí
-        // ==========================
+        // =========================
+        // Collect JSON (sin duplicados)
+        // =========================
         private List<string> CollectJsonFilesRecursive(string rootFolder, string tempRoot)
         {
             var foundJson = new List<string>();
@@ -602,9 +775,9 @@ namespace Presentacion
             }
         }
 
-        // ==========================
-        //  Extract seguro (C# 7.3) + rutas cortas
-        // ==========================
+        // =========================
+        // Extract seguro ZIP/RAR
+        // =========================
         private void ExtractArchiveSafe(string archivePath, string destinationFolder)
         {
             Directory.CreateDirectory(destinationFolder);
@@ -687,19 +860,6 @@ namespace Presentacion
                 var hex = BitConverter.ToString(bytes).Replace("-", "");
                 return hex.Substring(0, 8);
             }
-        }
-
-        private void dgvInventario_DataSourceChanged(object sender, EventArgs e)
-        {
-            if (dgvInventario.DataSource == null) return;
-            tsTotalRegistrosInventario.Text = $"{dgvInventario.Rows.Count:N0}";
-
-        }
-
-        private void dgvVenta_DataSourceChanged(object sender, EventArgs e)
-        {
-            if (dgvVenta.DataSource == null) return;
-            tsTotalRegistrosVenta.Text = $"{dgvVenta.Rows.Count:N0}";
         }
     }
 }
