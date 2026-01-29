@@ -11,7 +11,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Presentacion
 {
@@ -164,8 +163,6 @@ namespace Presentacion
 
         // =========================
         // EXPORT: exporta el grid principal del TAB ACTIVO
-        // Inventario: exporta Recepciones (CFDI) si está seleccionado el group (por simplicidad exporta el que tenga filas > 0),
-        // Venta: exporta dgvVenta.
         // =========================
         private void btnExport_Click(object sender, EventArgs e)
         {
@@ -181,8 +178,7 @@ namespace Presentacion
             }
             else
             {
-                // En inventario te conviene exportar Recepciones (detalle CFDI).
-                // Si no hay, exporta resumen.
+                // En inventario conviene exportar Recepciones (detalle). Si no hay, Resumen.
                 if (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0)
                 {
                     table = _dtRecepciones;
@@ -271,7 +267,7 @@ namespace Presentacion
         }
 
         // =========================
-        // PIPELINE: cargar reportes + construir tablas inventario/recepciones/venta
+        // PIPELINE
         // =========================
         private LoadResult LoadAll(string rootFolder)
         {
@@ -291,13 +287,10 @@ namespace Presentacion
                 if (reports.Count == 0)
                     throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
 
-                // Inventario: resumen por producto (subproducto)
+                // ✅ Resumen por producto con tu nueva orientación
                 var dtResumen = BuildResumenProducto(reports);
 
-                // Inventario: detalle recepciones CFDI (desde Recepcion.Complemento.Nacional.CFDIs)
                 var dtRecep = BuildRecepcionesCfdiTable(reports);
-
-                // Venta: detalle de entregas (si ya lo tenías)
                 var dtVenta = BuildVentasTable(reports);
 
                 return new LoadResult
@@ -322,12 +315,12 @@ namespace Presentacion
             public DataTable Venta { get; set; }
         }
 
-        // =========================
-        // RESUMEN POR PRODUCTO (por ClaveSubProducto):
-        // - Inventario final del mes: sumatoria Existencias.VolumenExistencias
-        // - Veces que entró producto: conteo CFDIs en Recepciones relacionados al subproducto
-        // - Total litros factura: sumatoria Recepcion.VolumenRecepcion.ValorNumerico
-        // =========================
+        // =========================================================
+        // ✅ RESUMEN POR PRODUCTO (por ClaveSubProducto) - NUEVA LÓGICA
+        // - "NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE"  -> SUMA Recepciones.TotalRecepciones
+        // - "TOTAL DE LITROS QUE MUESTRA LA FACTURA"         -> SUMA Recepciones.SumaCompras     (como lo pediste)
+        // - "INVENTARIO EN TANQUE AL FINALIZAR EL MES"       -> SUMA Recepciones.SumaVolumenRecepcion.ValorNumerico
+        // =========================================================
         private DataTable BuildResumenProducto(List<ReportItem> items)
         {
             var dict = new Dictionary<string, ResProdAgg>(StringComparer.OrdinalIgnoreCase);
@@ -357,28 +350,19 @@ namespace Presentacion
                     for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
                     {
                         var t = p.Tanque[tIndex];
-                        if (t == null) continue;
+                        if (t == null || t.Recepciones == null) continue;
 
-                        // Inventario al final (Existencias.VolumenExistencias)
-                        if (t.Existencias != null && t.Existencias.VolumenExistencias.HasValue)
-                            agg.InventarioFinal += t.Existencias.VolumenExistencias.Value;
+                        // 1) Num veces entró
+                        agg.NumVecesEntroProducto += (t.Recepciones.TotalRecepciones ?? 0);
 
-                        // Total litros factura (sum Recepcion.VolumenRecepcion.ValorNumerico)
-                        // Veces que entró: conteo de CFDIs en recepciones
-                        if (t.Recepciones != null && t.Recepciones.Recepcion != null)
+                        // 2) Total litros factura (según tu instrucción)
+                        agg.TotalLitrosFactura += (t.Recepciones.SumaCompras ?? 0m);
+
+                        // 3) Inventario final mes (según tu instrucción)
+                        if (t.Recepciones.SumaVolumenRecepcion != null)
                         {
-                            for (int rx = 0; rx < t.Recepciones.Recepcion.Count; rx++)
-                            {
-                                var rec = t.Recepciones.Recepcion[rx];
-                                if (rec == null) continue;
-
-                                if (rec.VolumenRecepcion != null)
-                                    agg.TotalLitrosFactura += rec.VolumenRecepcion.ValorNumerico;
-
-                                // Conteo CFDIs en complemento
-                                int cfdisCount = CountCfdis(rec);
-                                agg.NumEntradas += cfdisCount;
-                            }
+                            agg.InventarioFinalMes += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
+                            agg.RegisterUnidad(t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida);
                         }
                     }
                 }
@@ -386,17 +370,19 @@ namespace Presentacion
 
             var dt = new DataTable();
             dt.Columns.Add("ClaveSubProducto", typeof(string));
-            dt.Columns.Add("InventarioFinalMes", typeof(decimal));
-            dt.Columns.Add("NumVecesEntroProducto", typeof(int));
-            dt.Columns.Add("TotalLitrosFactura", typeof(decimal));
+            dt.Columns.Add("INVENTARIO EN TANQUE AL FINALIZAR EL MES", typeof(decimal));
+            dt.Columns.Add("NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE", typeof(int));
+            dt.Columns.Add("TOTAL DE LITROS QUE MUESTRA LA FACTURA", typeof(decimal));
+            dt.Columns.Add("Unidad", typeof(string));
 
             foreach (var agg in dict.Values.OrderBy(x => x.ClaveSubProducto))
             {
                 var row = dt.NewRow();
                 row["ClaveSubProducto"] = agg.ClaveSubProducto;
-                row["InventarioFinalMes"] = agg.InventarioFinal;
-                row["NumVecesEntroProducto"] = agg.NumEntradas;
-                row["TotalLitrosFactura"] = agg.TotalLitrosFactura;
+                row["INVENTARIO EN TANQUE AL FINALIZAR EL MES"] = agg.InventarioFinalMes;
+                row["NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE"] = agg.NumVecesEntroProducto;
+                row["TOTAL DE LITROS QUE MUESTRA LA FACTURA"] = agg.TotalLitrosFactura;
+                row["Unidad"] = agg.Unidad;
                 dt.Rows.Add(row);
             }
 
@@ -406,30 +392,31 @@ namespace Presentacion
         private class ResProdAgg
         {
             public string ClaveSubProducto;
-            public decimal InventarioFinal;
-            public int NumEntradas;
+            public decimal InventarioFinalMes;
+            public int NumVecesEntroProducto;
             public decimal TotalLitrosFactura;
-        }
 
-        private int CountCfdis(Recepcion rec)
-        {
-            if (rec == null || rec.Complemento == null || rec.Complemento.Nacional == null) return 0;
+            private string _unidad;
+            private bool _mix;
 
-            int count = 0;
-            for (int i = 0; i < rec.Complemento.Nacional.Count; i++)
+            public void RegisterUnidad(string u)
             {
-                var nac = rec.Complemento.Nacional[i];
-                if (nac == null || nac.CFDIs == null) continue;
-                count += nac.CFDIs.Count;
+                if (string.IsNullOrWhiteSpace(u)) return;
+                if (_mix) return;
+
+                if (_unidad == null) _unidad = u;
+                else if (!string.Equals(_unidad, u, StringComparison.OrdinalIgnoreCase))
+                    _mix = true;
             }
-            return count;
+
+            public string Unidad
+            {
+                get { return _mix ? "MIX" : (_unidad ?? ""); }
+            }
         }
 
         // =========================
         // RECEPCIONES CFDI (DETALLE)
-        // Columnas:
-        // # (NumeroDeRegistro), Nombre cliente, RFC Cliente proveedor, CFDI, Long., Fecha y hora,
-        // Precio Compra, Precio Venta Publico, Valor numerico
         // =========================
         private DataTable BuildRecepcionesCfdiTable(List<ReportItem> items)
         {
@@ -445,7 +432,6 @@ namespace Presentacion
             dt.Columns.Add("PrecioVentaPublico", typeof(decimal));
             dt.Columns.Add("ValorNumerico", typeof(decimal));
 
-            // extras opcionales
             dt.Columns.Add("ClaveSubProducto", typeof(string));
             dt.Columns.Add("ClaveProducto", typeof(string));
             dt.Columns.Add("SourceFile", typeof(string));
@@ -483,13 +469,10 @@ namespace Presentacion
 
                                     var row = dt.NewRow();
 
-                                    row["#"] = rec.NumeroDeRegistro ?? 0;
+                                    row["#"] = cIndex + 1; // como lo dejaste tú
                                     row["NombreCliente"] = nac.NombreClienteOProveedor ?? "";
                                     row["RfcClienteOProveedor"] = nac.RfcClienteOProveedor ?? "";
                                     row["CFDI"] = cfdi.Cfdi ?? "";
-
-                                    // Long.: si tienes algún campo exacto, cámbialo aquí.
-                                    // Si no existe, dejamos el UUID corto por conveniencia.
                                     row["Long."] = ShortCfdi(cfdi.Cfdi);
 
                                     row["FechaYHora"] = cfdi.FechaYHoraTransaccion.HasValue
@@ -528,7 +511,6 @@ namespace Presentacion
 
         // =========================
         // VENTA (de Entregas -> CFDIs)
-        // Deja como estaba, o ajusta a tu necesidad
         // =========================
         private DataTable BuildVentasTable(List<ReportItem> items)
         {
@@ -540,7 +522,6 @@ namespace Presentacion
             dt.Columns.Add("FechaYHoraTransaccion", typeof(string));
             dt.Columns.Add("ValorNumerico", typeof(decimal));
 
-            // extras
             dt.Columns.Add("RFCContribuyente", typeof(string));
             dt.Columns.Add("NumPermiso", typeof(string));
             dt.Columns.Add("FechaCorte", typeof(string));
@@ -869,13 +850,13 @@ namespace Presentacion
 
         private void dgvRecepciones_DataSourceChanged(object sender, EventArgs e)
         {
-            if(dgvRecepciones.DataSource == null) return;
+            if (dgvRecepciones.DataSource == null) return;
             tsTotalRecepciones.Text = dgvRecepciones.RowCount.ToString("N0");
         }
 
         private void dgvVenta_DataSourceChanged(object sender, EventArgs e)
         {
-            if(dgvVenta.DataSource == null) return;
+            if (dgvVenta.DataSource == null) return;
             tsTotalVentas.Text = dgvVenta.RowCount.ToString("N0");
         }
     }

@@ -26,8 +26,14 @@
             this.tabMain = new System.Windows.Forms.TabControl();
             this.tabInventario = new System.Windows.Forms.TabPage();
             this.grpRecepciones = new System.Windows.Forms.GroupBox();
+            this.toolStrip2 = new System.Windows.Forms.ToolStrip();
+            this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+            this.tsTotalRecepciones = new System.Windows.Forms.ToolStripLabel();
             this.dgvRecepciones = new System.Windows.Forms.DataGridView();
             this.grpResumen = new System.Windows.Forms.GroupBox();
+            this.toolStrip1 = new System.Windows.Forms.ToolStrip();
+            this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
+            this.tsTotalProductos = new System.Windows.Forms.ToolStripLabel();
             this.dgvResumenProducto = new System.Windows.Forms.DataGridView();
             this.grpDatosGenerales = new System.Windows.Forms.GroupBox();
             this.txtNumPermiso = new System.Windows.Forms.TextBox();
@@ -47,34 +53,28 @@
             this.lblVersion = new System.Windows.Forms.Label();
             this.lblInstalacion = new System.Windows.Forms.Label();
             this.tabVenta = new System.Windows.Forms.TabPage();
-            this.dgvVenta = new System.Windows.Forms.DataGridView();
-            this.toolStrip1 = new System.Windows.Forms.ToolStrip();
-            this.toolStrip2 = new System.Windows.Forms.ToolStrip();
-            this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.tsTotalRecepciones = new System.Windows.Forms.ToolStripLabel();
-            this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
-            this.tsTotalProductos = new System.Windows.Forms.ToolStripLabel();
             this.toolStrip3 = new System.Windows.Forms.ToolStrip();
             this.toolStripLabel3 = new System.Windows.Forms.ToolStripLabel();
             this.tsTotalVentas = new System.Windows.Forms.ToolStripLabel();
+            this.dgvVenta = new System.Windows.Forms.DataGridView();
             this.groupBoxOptions.SuspendLayout();
             this.tabMain.SuspendLayout();
             this.tabInventario.SuspendLayout();
             this.grpRecepciones.SuspendLayout();
+            this.toolStrip2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvRecepciones)).BeginInit();
             this.grpResumen.SuspendLayout();
+            this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResumenProducto)).BeginInit();
             this.grpDatosGenerales.SuspendLayout();
             this.tabVenta.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).BeginInit();
-            this.toolStrip1.SuspendLayout();
-            this.toolStrip2.SuspendLayout();
             this.toolStrip3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).BeginInit();
             this.SuspendLayout();
             // 
             // txtFolder
             // 
-            this.txtFolder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.txtFolder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtFolder.Location = new System.Drawing.Point(10, 10);
             this.txtFolder.Name = "txtFolder";
@@ -116,7 +116,7 @@
             // 
             // progressBar
             // 
-            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.progressBar.Location = new System.Drawing.Point(10, 36);
             this.progressBar.Name = "progressBar";
@@ -125,7 +125,7 @@
             // 
             // lblStatus
             // 
-            this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblStatus.Location = new System.Drawing.Point(10, 50);
             this.lblStatus.Name = "lblStatus";
@@ -135,7 +135,7 @@
             // 
             // groupBoxOptions
             // 
-            this.groupBoxOptions.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.groupBoxOptions.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBoxOptions.Controls.Add(this.chkStopOnFirstJson);
             this.groupBoxOptions.Controls.Add(this.chkOnlyFirstJsonPerArchive);
@@ -170,8 +170,8 @@
             // 
             // tabMain
             // 
-            this.tabMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.tabMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tabMain.Controls.Add(this.tabInventario);
             this.tabMain.Controls.Add(this.tabVenta);
@@ -196,8 +196,8 @@
             // 
             // grpRecepciones
             // 
-            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.grpRecepciones.Controls.Add(this.toolStrip2);
             this.grpRecepciones.Controls.Add(this.dgvRecepciones);
@@ -208,10 +208,34 @@
             this.grpRecepciones.TabStop = false;
             this.grpRecepciones.Text = "Recepciones (CFDI)";
             // 
+            // toolStrip2
+            // 
+            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel1,
+            this.tsTotalRecepciones});
+            this.toolStrip2.Location = new System.Drawing.Point(3, 190);
+            this.toolStrip2.Name = "toolStrip2";
+            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip2.TabIndex = 1;
+            this.toolStrip2.Text = "toolStrip2";
+            // 
+            // toolStripLabel1
+            // 
+            this.toolStripLabel1.Name = "toolStripLabel1";
+            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel1.Text = "Total de registros:";
+            // 
+            // tsTotalRecepciones
+            // 
+            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
+            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalRecepciones.Text = "0";
+            // 
             // dgvRecepciones
             // 
-            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgvRecepciones.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvRecepciones.Location = new System.Drawing.Point(5, 19);
@@ -224,7 +248,7 @@
             // 
             // grpResumen
             // 
-            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.grpResumen.Controls.Add(this.toolStrip1);
             this.grpResumen.Controls.Add(this.dgvResumenProducto);
@@ -235,10 +259,34 @@
             this.grpResumen.TabStop = false;
             this.grpResumen.Text = "Resumen por Producto";
             // 
+            // toolStrip1
+            // 
+            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel2,
+            this.tsTotalProductos});
+            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
+            this.toolStrip1.Name = "toolStrip1";
+            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip1.TabIndex = 1;
+            this.toolStrip1.Text = "toolStrip1";
+            // 
+            // toolStripLabel2
+            // 
+            this.toolStripLabel2.Name = "toolStripLabel2";
+            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel2.Text = "Total de registros:";
+            // 
+            // tsTotalProductos
+            // 
+            this.tsTotalProductos.Name = "tsTotalProductos";
+            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalProductos.Text = "0";
+            // 
             // dgvResumenProducto
             // 
-            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgvResumenProducto.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvResumenProducto.Location = new System.Drawing.Point(5, 19);
@@ -251,7 +299,7 @@
             // 
             // grpDatosGenerales
             // 
-            this.grpDatosGenerales.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.grpDatosGenerales.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.grpDatosGenerales.Controls.Add(this.txtNumPermiso);
             this.grpDatosGenerales.Controls.Add(this.txtModalidadPermiso);
@@ -424,68 +472,6 @@
             this.tabVenta.Text = "Venta";
             this.tabVenta.UseVisualStyleBackColor = true;
             // 
-            // dgvVenta
-            // 
-            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvVenta.Location = new System.Drawing.Point(5, 5);
-            this.dgvVenta.Name = "dgvVenta";
-            this.dgvVenta.ReadOnly = true;
-            this.dgvVenta.RowTemplate.Height = 25;
-            this.dgvVenta.Size = new System.Drawing.Size(933, 459);
-            this.dgvVenta.TabIndex = 0;
-            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
-            // 
-            // toolStrip1
-            // 
-            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel2,
-            this.tsTotalProductos});
-            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
-            this.toolStrip1.Name = "toolStrip1";
-            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip1.TabIndex = 1;
-            this.toolStrip1.Text = "toolStrip1";
-            // 
-            // toolStrip2
-            // 
-            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel1,
-            this.tsTotalRecepciones});
-            this.toolStrip2.Location = new System.Drawing.Point(3, 190);
-            this.toolStrip2.Name = "toolStrip2";
-            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip2.TabIndex = 1;
-            this.toolStrip2.Text = "toolStrip2";
-            // 
-            // toolStripLabel1
-            // 
-            this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel1.Text = "Total de registros:";
-            // 
-            // tsTotalRecepciones
-            // 
-            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
-            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalRecepciones.Text = "0";
-            // 
-            // toolStripLabel2
-            // 
-            this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel2.Text = "Total de registros:";
-            // 
-            // tsTotalProductos
-            // 
-            this.tsTotalProductos.Name = "tsTotalProductos";
-            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalProductos.Text = "0";
-            // 
             // toolStrip3
             // 
             this.toolStrip3.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -510,6 +496,20 @@
             this.tsTotalVentas.Size = new System.Drawing.Size(13, 22);
             this.tsTotalVentas.Text = "0";
             // 
+            // dgvVenta
+            // 
+            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvVenta.Location = new System.Drawing.Point(5, 5);
+            this.dgvVenta.Name = "dgvVenta";
+            this.dgvVenta.ReadOnly = true;
+            this.dgvVenta.RowTemplate.Height = 25;
+            this.dgvVenta.Size = new System.Drawing.Size(933, 459);
+            this.dgvVenta.TabIndex = 0;
+            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
+            // 
             // frmJsonExplorer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -533,21 +533,21 @@
             this.tabInventario.ResumeLayout(false);
             this.grpRecepciones.ResumeLayout(false);
             this.grpRecepciones.PerformLayout();
+            this.toolStrip2.ResumeLayout(false);
+            this.toolStrip2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvRecepciones)).EndInit();
             this.grpResumen.ResumeLayout(false);
             this.grpResumen.PerformLayout();
+            this.toolStrip1.ResumeLayout(false);
+            this.toolStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResumenProducto)).EndInit();
             this.grpDatosGenerales.ResumeLayout(false);
             this.grpDatosGenerales.PerformLayout();
             this.tabVenta.ResumeLayout(false);
             this.tabVenta.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).EndInit();
-            this.toolStrip1.ResumeLayout(false);
-            this.toolStrip1.PerformLayout();
-            this.toolStrip2.ResumeLayout(false);
-            this.toolStrip2.PerformLayout();
             this.toolStrip3.ResumeLayout(false);
             this.toolStrip3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -570,7 +570,6 @@
         private System.Windows.Forms.TabPage tabInventario;
         private System.Windows.Forms.TabPage tabVenta;
 
-        // Inventario - controles nuevos
         private System.Windows.Forms.GroupBox grpDatosGenerales;
         private System.Windows.Forms.Label lblInstalacion;
         private System.Windows.Forms.Label lblVersion;
@@ -596,8 +595,8 @@
         private System.Windows.Forms.GroupBox grpRecepciones;
         private System.Windows.Forms.DataGridView dgvRecepciones;
 
-        // Venta
         private System.Windows.Forms.DataGridView dgvVenta;
+
         private System.Windows.Forms.ToolStrip toolStrip1;
         private System.Windows.Forms.ToolStrip toolStrip2;
         private System.Windows.Forms.ToolStripLabel toolStripLabel1;
