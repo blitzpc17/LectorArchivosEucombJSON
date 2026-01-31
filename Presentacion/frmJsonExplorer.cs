@@ -24,6 +24,10 @@ namespace Presentacion
         private DataTable _dtRecepciones;
         private DataTable _dtVenta;
 
+        // ✅ Para filtrar recepciones por ClaveSubProducto
+        private DataTable _dtRecepcionesFull;
+        private DataView _dvRecepciones;
+
         private class ReportItem
         {
             public string SourceFile { get; set; }
@@ -41,10 +45,17 @@ namespace Presentacion
             SetupGrid(dgvRecepciones);
             SetupGrid(dgvVenta);
 
+            // ✅ Resumen se adapta al ancho del grid
+            dgvResumenProducto.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+            // ✅ Click para filtrar recepciones
+            dgvResumenProducto.CellClick += dgvResumenProducto_CellClick;
+
             ClearDatosGenerales();
 
             lblStatus.Text = "Listo.";
             progressBar.Style = ProgressBarStyle.Blocks;
+
             btnExport.Enabled = false;
         }
 
@@ -55,6 +66,12 @@ namespace Presentacion
             dgv.AllowUserToDeleteRows = false;
             dgv.ReadOnly = true;
             dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgv.MultiSelect = false;
+            dgv.RowHeadersVisible = false;
+
+            // Default (el resumen lo seteo a Fill arriba)
+            if (dgv != dgvResumenProducto)
+                dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
         }
 
         private void ClearDatosGenerales()
@@ -94,6 +111,9 @@ namespace Presentacion
             btnProcess.Enabled = false;
             btnExport.Enabled = false;
 
+            btnExportInventario.Enabled = false;
+            btnExportVenta.Enabled = false;
+
             ClearDatosGenerales();
 
             dgvResumenProducto.DataSource = null;
@@ -103,6 +123,10 @@ namespace Presentacion
             _dtResumenProducto = null;
             _dtRecepciones = null;
             _dtVenta = null;
+
+            _dtRecepcionesFull = null;
+            _dvRecepciones = null;
+
             _reports = new List<ReportItem>();
 
             progressBar.Style = ProgressBarStyle.Marquee;
@@ -114,23 +138,31 @@ namespace Presentacion
 
                 _reports = result.Reports;
 
-                // Datos generales: si hay muchos json, tomamos el primero como "cabecera"
+                // Datos generales: tomamos el primero como cabecera
                 FillDatosGenerales(_reports.Count > 0 ? _reports[0].Report : null);
 
                 _dtResumenProducto = result.ResumenProducto;
                 _dtRecepciones = result.Recepciones;
                 _dtVenta = result.Venta;
 
+                // ✅ full + view filtrable
+                _dtRecepcionesFull = _dtRecepciones;
+                _dvRecepciones = (_dtRecepcionesFull != null) ? new DataView(_dtRecepcionesFull) : null;
+
                 dgvResumenProducto.DataSource = _dtResumenProducto;
-                dgvRecepciones.DataSource = _dtRecepciones;
+                dgvRecepciones.DataSource = (_dvRecepciones != null) ? (object)_dvRecepciones : _dtRecepciones;
                 dgvVenta.DataSource = _dtVenta;
 
-                btnExport.Enabled =
-                    (_dtResumenProducto != null && _dtResumenProducto.Rows.Count > 0) ||
-                    (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0) ||
-                    (_dtVenta != null && _dtVenta.Rows.Count > 0);
+                bool hasInv = (_dtResumenProducto != null && _dtResumenProducto.Rows.Count > 0) ||
+                              (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0);
 
-                lblStatus.Text = $"Listo. Resumen: {_dtResumenProducto.Rows.Count:N0} | Recepciones: {_dtRecepciones.Rows.Count:N0} | Venta: {_dtVenta.Rows.Count:N0}";
+                bool hasVenta = (_dtVenta != null && _dtVenta.Rows.Count > 0);
+
+                btnExport.Enabled = hasInv || hasVenta;
+                btnExportInventario.Enabled = hasInv;
+                btnExportVenta.Enabled = hasVenta;
+
+                lblStatus.Text = $"Listo. Resumen: {(_dtResumenProducto?.Rows.Count ?? 0):N0} | Recepciones: {(_dtRecepciones?.Rows.Count ?? 0):N0} | Venta: {(_dtVenta?.Rows.Count ?? 0):N0}";
             }
             catch (Exception ex)
             {
@@ -162,73 +194,150 @@ namespace Presentacion
         }
 
         // =========================
-        // EXPORT: exporta el grid principal del TAB ACTIVO
+        // ✅ CLICK EN RESUMEN -> FILTRAR RECEPCIONES POR ClaveSubProducto
+        // =========================
+        private void dgvResumenProducto_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            if (_dvRecepciones == null) return;
+
+            var row = dgvResumenProducto.Rows[e.RowIndex];
+            var keyObj = row.Cells["ClaveSubProducto"] != null ? row.Cells["ClaveSubProducto"].Value : null;
+
+            var claveSub = (keyObj == null) ? "" : keyObj.ToString();
+            claveSub = (claveSub ?? "").Trim();
+
+            ApplyRecepcionesFilter(claveSub);
+        }
+
+        private void ApplyRecepcionesFilter(string claveSubProducto)
+        {
+            if (_dvRecepciones == null) return;
+
+            if (string.IsNullOrWhiteSpace(claveSubProducto) ||
+                claveSubProducto.Equals("(SIN_CLAVESUBPRODUCTO)", StringComparison.OrdinalIgnoreCase))
+            {
+                _dvRecepciones.RowFilter = "";
+                lblStatus.Text = "Recepciones: mostrando todos los registros.";
+                return;
+            }
+
+            var safe = claveSubProducto.Replace("'", "''");
+            _dvRecepciones.RowFilter = "ClaveSubProducto = '" + safe + "'";
+            lblStatus.Text = "Recepciones: filtrado por ClaveSubProducto = " + claveSubProducto + " (" + _dvRecepciones.Count.ToString("N0") + " regs)";
+        }
+
+        // =========================
+        // EXPORT (TOP) -> según TAB ACTIVO
         // =========================
         private void btnExport_Click(object sender, EventArgs e)
         {
-            DataTable table;
-            string sheetName;
-            string defaultFile;
-
             if (tabMain.SelectedTab == tabVenta)
             {
-                table = _dtVenta;
-                sheetName = "Venta";
-                defaultFile = "Venta.xlsx";
+                ExportVenta();
             }
             else
             {
-                // En inventario conviene exportar Recepciones (detalle). Si no hay, Resumen.
-                if (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0)
-                {
-                    table = _dtRecepciones;
-                    sheetName = "Recepciones";
-                    defaultFile = "Recepciones.xlsx";
-                }
-                else
-                {
-                    table = _dtResumenProducto;
-                    sheetName = "ResumenProducto";
-                    defaultFile = "ResumenProducto.xlsx";
-                }
+                ExportInventario();
             }
+        }
 
-            if (table == null || table.Rows.Count == 0)
+        // ✅ Botón exportar en tab Inventario
+        private void btnExportInventario_Click(object sender, EventArgs e)
+        {
+            ExportInventario();
+        }
+
+        // ✅ Botón exportar en tab Venta
+        private void btnExportVenta_Click(object sender, EventArgs e)
+        {
+            ExportVenta();
+        }
+
+        private void ExportInventario()
+        {
+            bool hasResumen = _dtResumenProducto != null && _dtResumenProducto.Rows.Count > 0;
+            bool hasRecep = _dtRecepcionesFull != null && _dtRecepcionesFull.Rows.Count > 0;
+
+            if (!hasResumen && !hasRecep)
             {
-                MessageBox.Show("No hay datos para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("No hay datos de Inventario para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             using (var sfd = new SaveFileDialog())
             {
                 sfd.Filter = "Excel (*.xlsx)|*.xlsx";
-                sfd.FileName = defaultFile;
-
+                sfd.FileName = "Inventario.xlsx";
                 if (sfd.ShowDialog() != DialogResult.OK) return;
 
                 using (var wb = new XLWorkbook())
                 {
-                    var ws = wb.Worksheets.Add(sheetName);
+                    if (hasResumen)
+                        AddWorksheetFromTable(wb, "ResumenProducto", _dtResumenProducto);
 
-                    for (int c = 0; c < table.Columns.Count; c++)
-                        ws.Cell(1, c + 1).SetValue(table.Columns[c].ColumnName);
-
-                    for (int r = 0; r < table.Rows.Count; r++)
+                    if (hasRecep)
                     {
-                        for (int c = 0; c < table.Columns.Count; c++)
-                        {
-                            var col = table.Columns[c];
-                            var value = table.Rows[r][c];
-                            SetCellValue(ws.Cell(r + 2, c + 1), value, col.DataType);
-                        }
+                        DataTable toExportRecep;
+
+                        // ✅ si está filtrado exporta solo el filtro
+                        if (_dvRecepciones != null && !string.IsNullOrWhiteSpace(_dvRecepciones.RowFilter))
+                            toExportRecep = _dvRecepciones.ToTable();
+                        else
+                            toExportRecep = _dtRecepcionesFull;
+
+                        AddWorksheetFromTable(wb, "Recepciones", toExportRecep);
                     }
 
-                    ws.Columns().AdjustToContents();
                     wb.SaveAs(sfd.FileName);
                 }
 
                 MessageBox.Show("Exportado correctamente.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        private void ExportVenta()
+        {
+            if (_dtVenta == null || _dtVenta.Rows.Count == 0)
+            {
+                MessageBox.Show("No hay datos de Venta para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Excel (*.xlsx)|*.xlsx";
+                sfd.FileName = "Venta.xlsx";
+                if (sfd.ShowDialog() != DialogResult.OK) return;
+
+                using (var wb = new XLWorkbook())
+                {
+                    AddWorksheetFromTable(wb, "Venta", _dtVenta);
+                    wb.SaveAs(sfd.FileName);
+                }
+
+                MessageBox.Show("Exportado correctamente.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void AddWorksheetFromTable(XLWorkbook wb, string sheetName, DataTable table)
+        {
+            var ws = wb.Worksheets.Add(sheetName);
+
+            for (int c = 0; c < table.Columns.Count; c++)
+                ws.Cell(1, c + 1).SetValue(table.Columns[c].ColumnName);
+
+            for (int r = 0; r < table.Rows.Count; r++)
+            {
+                for (int c = 0; c < table.Columns.Count; c++)
+                {
+                    var col = table.Columns[c];
+                    var value = table.Rows[r][c];
+                    SetCellValue(ws.Cell(r + 2, c + 1), value, col.DataType);
+                }
+            }
+
+            ws.Columns().AdjustToContents();
         }
 
         private static void SetCellValue(IXLCell cell, object value, Type dataType)
@@ -287,10 +396,16 @@ namespace Presentacion
                 if (reports.Count == 0)
                     throw new InvalidOperationException("Se encontraron .json pero ninguno deserializó a EDSReport (revisa el modelo).");
 
-                // ✅ Resumen por producto con tu nueva orientación
+                // ✅ Resumen por producto según tu regla:
+                // NumVecesEntroProducto = sum(Recepciones.TotalRecepciones)
+                // TotalLitrosFactura = sum(Recepciones.SumaCompras)
+                // InventarioFinalMes = sum(Recepciones.SumaVolumenRecepcion.ValorNumerico)
                 var dtResumen = BuildResumenProducto(reports);
 
+                // ✅ Detalle CFDI en recepciones (Recepcion > Complemento > Nacional > CFDIs)
                 var dtRecep = BuildRecepcionesCfdiTable(reports);
+
+                // ✅ Venta (Entrega > Complemento > Nacional > CFDIs)
                 var dtVenta = BuildVentasTable(reports);
 
                 return new LoadResult
@@ -315,12 +430,9 @@ namespace Presentacion
             public DataTable Venta { get; set; }
         }
 
-        // =========================================================
-        // ✅ RESUMEN POR PRODUCTO (por ClaveSubProducto) - NUEVA LÓGICA
-        // - "NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE"  -> SUMA Recepciones.TotalRecepciones
-        // - "TOTAL DE LITROS QUE MUESTRA LA FACTURA"         -> SUMA Recepciones.SumaCompras     (como lo pediste)
-        // - "INVENTARIO EN TANQUE AL FINALIZAR EL MES"       -> SUMA Recepciones.SumaVolumenRecepcion.ValorNumerico
-        // =========================================================
+        // =========================
+        // RESUMEN POR PRODUCTO (por ClaveSubProducto) SEGÚN TU INDICACIÓN
+        // =========================
         private DataTable BuildResumenProducto(List<ReportItem> items)
         {
             var dict = new Dictionary<string, ResProdAgg>(StringComparer.OrdinalIgnoreCase);
@@ -350,19 +462,21 @@ namespace Presentacion
                     for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
                     {
                         var t = p.Tanque[tIndex];
-                        if (t == null || t.Recepciones == null) continue;
+                        if (t == null) continue;
 
-                        // 1) Num veces entró
-                        agg.NumVecesEntroProducto += (t.Recepciones.TotalRecepciones ?? 0);
-
-                        // 2) Total litros factura (según tu instrucción)
-                        agg.TotalLitrosFactura += (t.Recepciones.SumaCompras ?? 0m);
-
-                        // 3) Inventario final mes (según tu instrucción)
-                        if (t.Recepciones.SumaVolumenRecepcion != null)
+                        if (t.Recepciones != null)
                         {
-                            agg.InventarioFinalMes += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
-                            agg.RegisterUnidad(t.Recepciones.SumaVolumenRecepcion.UnidadDeMedida);
+                            // ✅ NumVecesEntroProducto = TotalRecepciones
+                            if (t.Recepciones.TotalRecepciones.HasValue)
+                                agg.NumVecesEntroProducto += t.Recepciones.TotalRecepciones.Value;
+
+                            // ✅ TotalLitrosFactura = SumaCompras
+                            if (t.Recepciones.SumaCompras.HasValue)
+                                agg.TotalLitrosFactura += t.Recepciones.SumaCompras.Value;
+
+                            // ✅ InventarioFinalMes = SumaVolumenRecepcion.ValorNumerico
+                            if (t.Recepciones.SumaVolumenRecepcion != null)
+                                agg.InventarioFinalMes += t.Recepciones.SumaVolumenRecepcion.ValorNumerico;
                         }
                     }
                 }
@@ -370,19 +484,17 @@ namespace Presentacion
 
             var dt = new DataTable();
             dt.Columns.Add("ClaveSubProducto", typeof(string));
-            dt.Columns.Add("INVENTARIO EN TANQUE AL FINALIZAR EL MES", typeof(decimal));
-            dt.Columns.Add("NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE", typeof(int));
-            dt.Columns.Add("TOTAL DE LITROS QUE MUESTRA LA FACTURA", typeof(decimal));
-            dt.Columns.Add("Unidad", typeof(string));
+            dt.Columns.Add("InventarioFinalMes", typeof(decimal));
+            dt.Columns.Add("NumVecesEntroProducto", typeof(int));
+            dt.Columns.Add("TotalLitrosFactura", typeof(decimal));
 
             foreach (var agg in dict.Values.OrderBy(x => x.ClaveSubProducto))
             {
                 var row = dt.NewRow();
                 row["ClaveSubProducto"] = agg.ClaveSubProducto;
-                row["INVENTARIO EN TANQUE AL FINALIZAR EL MES"] = agg.InventarioFinalMes;
-                row["NUMERO DE VECES QUE ENTRO PRODUCTO AL TANQUE"] = agg.NumVecesEntroProducto;
-                row["TOTAL DE LITROS QUE MUESTRA LA FACTURA"] = agg.TotalLitrosFactura;
-                row["Unidad"] = agg.Unidad;
+                row["InventarioFinalMes"] = agg.InventarioFinalMes;
+                row["NumVecesEntroProducto"] = agg.NumVecesEntroProducto;
+                row["TotalLitrosFactura"] = agg.TotalLitrosFactura;
                 dt.Rows.Add(row);
             }
 
@@ -395,24 +507,6 @@ namespace Presentacion
             public decimal InventarioFinalMes;
             public int NumVecesEntroProducto;
             public decimal TotalLitrosFactura;
-
-            private string _unidad;
-            private bool _mix;
-
-            public void RegisterUnidad(string u)
-            {
-                if (string.IsNullOrWhiteSpace(u)) return;
-                if (_mix) return;
-
-                if (_unidad == null) _unidad = u;
-                else if (!string.Equals(_unidad, u, StringComparison.OrdinalIgnoreCase))
-                    _mix = true;
-            }
-
-            public string Unidad
-            {
-                get { return _mix ? "MIX" : (_unidad ?? ""); }
-            }
         }
 
         // =========================
@@ -435,6 +529,8 @@ namespace Presentacion
             dt.Columns.Add("ClaveSubProducto", typeof(string));
             dt.Columns.Add("ClaveProducto", typeof(string));
             dt.Columns.Add("SourceFile", typeof(string));
+
+            int globalRow = 0;
 
             for (int i = 0; i < items.Count; i++)
             {
@@ -467,13 +563,14 @@ namespace Presentacion
                                     var cfdi = nac.CFDIs[cIndex];
                                     if (cfdi == null) continue;
 
-                                    var row = dt.NewRow();
+                                    globalRow++;
 
-                                    row["#"] = cIndex + 1; // como lo dejaste tú
+                                    var row = dt.NewRow();
+                                    row["#"] = globalRow;
                                     row["NombreCliente"] = nac.NombreClienteOProveedor ?? "";
                                     row["RfcClienteOProveedor"] = nac.RfcClienteOProveedor ?? "";
                                     row["CFDI"] = cfdi.Cfdi ?? "";
-                                    row["Long."] = ShortCfdi(cfdi.Cfdi);
+                                    row["Long."] = GetCfdiLength(cfdi.Cfdi);
 
                                     row["FechaYHora"] = cfdi.FechaYHoraTransaccion.HasValue
                                         ? cfdi.FechaYHoraTransaccion.Value.ToString("yyyy-MM-dd HH:mm:ss")
@@ -502,15 +599,15 @@ namespace Presentacion
             return dt;
         }
 
-        private string ShortCfdi(string cfdi)
+        private string GetCfdiLength(string cfdi)
         {
             if (string.IsNullOrWhiteSpace(cfdi)) return "";
             var s = cfdi.Trim();
-            return s.Length.ToString("N0");
+            return s.Length.ToString();
         }
 
         // =========================
-        // VENTA (de Entregas -> CFDIs)
+        // VENTA
         // =========================
         private DataTable BuildVentasTable(List<ReportItem> items)
         {

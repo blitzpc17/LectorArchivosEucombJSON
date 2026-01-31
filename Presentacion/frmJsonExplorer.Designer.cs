@@ -25,6 +25,7 @@
             this.chkOnlyFirstJsonPerArchive = new System.Windows.Forms.CheckBox();
             this.tabMain = new System.Windows.Forms.TabControl();
             this.tabInventario = new System.Windows.Forms.TabPage();
+            this.btnExportInventario = new System.Windows.Forms.Button();
             this.grpRecepciones = new System.Windows.Forms.GroupBox();
             this.toolStrip2 = new System.Windows.Forms.ToolStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
@@ -53,6 +54,7 @@
             this.lblVersion = new System.Windows.Forms.Label();
             this.lblInstalacion = new System.Windows.Forms.Label();
             this.tabVenta = new System.Windows.Forms.TabPage();
+            this.btnExportVenta = new System.Windows.Forms.Button();
             this.toolStrip3 = new System.Windows.Forms.ToolStrip();
             this.toolStripLabel3 = new System.Windows.Forms.ToolStripLabel();
             this.tsTotalVentas = new System.Windows.Forms.ToolStripLabel();
@@ -183,6 +185,7 @@
             // 
             // tabInventario
             // 
+            this.tabInventario.Controls.Add(this.btnExportInventario);
             this.tabInventario.Controls.Add(this.grpRecepciones);
             this.tabInventario.Controls.Add(this.grpResumen);
             this.tabInventario.Controls.Add(this.grpDatosGenerales);
@@ -194,108 +197,16 @@
             this.tabInventario.Text = "Inventario";
             this.tabInventario.UseVisualStyleBackColor = true;
             // 
-            // grpRecepciones
+            // btnExportInventario
             // 
-            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.grpRecepciones.Controls.Add(this.toolStrip2);
-            this.grpRecepciones.Controls.Add(this.dgvRecepciones);
-            this.grpRecepciones.Location = new System.Drawing.Point(5, 274);
-            this.grpRecepciones.Name = "grpRecepciones";
-            this.grpRecepciones.Size = new System.Drawing.Size(933, 218);
-            this.grpRecepciones.TabIndex = 2;
-            this.grpRecepciones.TabStop = false;
-            this.grpRecepciones.Text = "Recepciones (CFDI)";
-            // 
-            // toolStrip2
-            // 
-            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel1,
-            this.tsTotalRecepciones});
-            this.toolStrip2.Location = new System.Drawing.Point(3, 190);
-            this.toolStrip2.Name = "toolStrip2";
-            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip2.TabIndex = 1;
-            this.toolStrip2.Text = "toolStrip2";
-            // 
-            // toolStripLabel1
-            // 
-            this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel1.Text = "Total de registros:";
-            // 
-            // tsTotalRecepciones
-            // 
-            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
-            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalRecepciones.Text = "0";
-            // 
-            // dgvRecepciones
-            // 
-            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvRecepciones.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvRecepciones.Location = new System.Drawing.Point(5, 19);
-            this.dgvRecepciones.Name = "dgvRecepciones";
-            this.dgvRecepciones.ReadOnly = true;
-            this.dgvRecepciones.RowTemplate.Height = 25;
-            this.dgvRecepciones.Size = new System.Drawing.Size(922, 168);
-            this.dgvRecepciones.TabIndex = 0;
-            this.dgvRecepciones.DataSourceChanged += new System.EventHandler(this.dgvRecepciones_DataSourceChanged);
-            // 
-            // grpResumen
-            // 
-            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.grpResumen.Controls.Add(this.toolStrip1);
-            this.grpResumen.Controls.Add(this.dgvResumenProducto);
-            this.grpResumen.Location = new System.Drawing.Point(5, 114);
-            this.grpResumen.Name = "grpResumen";
-            this.grpResumen.Size = new System.Drawing.Size(933, 154);
-            this.grpResumen.TabIndex = 1;
-            this.grpResumen.TabStop = false;
-            this.grpResumen.Text = "Resumen por Producto";
-            // 
-            // toolStrip1
-            // 
-            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel2,
-            this.tsTotalProductos});
-            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
-            this.toolStrip1.Name = "toolStrip1";
-            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip1.TabIndex = 1;
-            this.toolStrip1.Text = "toolStrip1";
-            // 
-            // toolStripLabel2
-            // 
-            this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel2.Text = "Total de registros:";
-            // 
-            // tsTotalProductos
-            // 
-            this.tsTotalProductos.Name = "tsTotalProductos";
-            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalProductos.Text = "0";
-            // 
-            // dgvResumenProducto
-            // 
-            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvResumenProducto.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvResumenProducto.Location = new System.Drawing.Point(5, 19);
-            this.dgvResumenProducto.Name = "dgvResumenProducto";
-            this.dgvResumenProducto.ReadOnly = true;
-            this.dgvResumenProducto.RowTemplate.Height = 25;
-            this.dgvResumenProducto.Size = new System.Drawing.Size(922, 104);
-            this.dgvResumenProducto.TabIndex = 0;
-            this.dgvResumenProducto.DataSourceChanged += new System.EventHandler(this.dgvResumenProducto_DataSourceChanged);
+            this.btnExportInventario.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnExportInventario.Location = new System.Drawing.Point(820, 6);
+            this.btnExportInventario.Name = "btnExportInventario";
+            this.btnExportInventario.Size = new System.Drawing.Size(116, 23);
+            this.btnExportInventario.TabIndex = 99;
+            this.btnExportInventario.Text = "Exportar Inventario";
+            this.btnExportInventario.UseVisualStyleBackColor = true;
+            this.btnExportInventario.Click += new System.EventHandler(this.btnExportInventario_Click);
             // 
             // grpDatosGenerales
             // 
@@ -317,7 +228,7 @@
             this.grpDatosGenerales.Controls.Add(this.lblRfcContribuyente);
             this.grpDatosGenerales.Controls.Add(this.lblVersion);
             this.grpDatosGenerales.Controls.Add(this.lblInstalacion);
-            this.grpDatosGenerales.Location = new System.Drawing.Point(5, 5);
+            this.grpDatosGenerales.Location = new System.Drawing.Point(5, 32);
             this.grpDatosGenerales.Name = "grpDatosGenerales";
             this.grpDatosGenerales.Size = new System.Drawing.Size(933, 104);
             this.grpDatosGenerales.TabIndex = 0;
@@ -460,8 +371,110 @@
             this.lblInstalacion.TabIndex = 15;
             this.lblInstalacion.Text = "Instalación:";
             // 
+            // grpResumen
+            // 
+            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpResumen.Controls.Add(this.toolStrip1);
+            this.grpResumen.Controls.Add(this.dgvResumenProducto);
+            this.grpResumen.Location = new System.Drawing.Point(5, 142);
+            this.grpResumen.Name = "grpResumen";
+            this.grpResumen.Size = new System.Drawing.Size(933, 154);
+            this.grpResumen.TabIndex = 1;
+            this.grpResumen.TabStop = false;
+            this.grpResumen.Text = "Resumen por Producto";
+            // 
+            // dgvResumenProducto
+            // 
+            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvResumenProducto.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvResumenProducto.Location = new System.Drawing.Point(5, 19);
+            this.dgvResumenProducto.Name = "dgvResumenProducto";
+            this.dgvResumenProducto.ReadOnly = true;
+            this.dgvResumenProducto.RowTemplate.Height = 25;
+            this.dgvResumenProducto.Size = new System.Drawing.Size(922, 104);
+            this.dgvResumenProducto.TabIndex = 0;
+            this.dgvResumenProducto.DataSourceChanged += new System.EventHandler(this.dgvResumenProducto_DataSourceChanged);
+            // 
+            // toolStrip1
+            // 
+            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel2,
+            this.tsTotalProductos});
+            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
+            this.toolStrip1.Name = "toolStrip1";
+            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip1.TabIndex = 1;
+            // 
+            // toolStripLabel2
+            // 
+            this.toolStripLabel2.Name = "toolStripLabel2";
+            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel2.Text = "Total de registros:";
+            // 
+            // tsTotalProductos
+            // 
+            this.tsTotalProductos.Name = "tsTotalProductos";
+            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalProductos.Text = "0";
+            // 
+            // grpRecepciones
+            // 
+            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpRecepciones.Controls.Add(this.toolStrip2);
+            this.grpRecepciones.Controls.Add(this.dgvRecepciones);
+            this.grpRecepciones.Location = new System.Drawing.Point(5, 302);
+            this.grpRecepciones.Name = "grpRecepciones";
+            this.grpRecepciones.Size = new System.Drawing.Size(933, 190);
+            this.grpRecepciones.TabIndex = 2;
+            this.grpRecepciones.TabStop = false;
+            this.grpRecepciones.Text = "Recepciones (CFDI)";
+            // 
+            // dgvRecepciones
+            // 
+            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvRecepciones.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvRecepciones.Location = new System.Drawing.Point(5, 19);
+            this.dgvRecepciones.Name = "dgvRecepciones";
+            this.dgvRecepciones.ReadOnly = true;
+            this.dgvRecepciones.RowTemplate.Height = 25;
+            this.dgvRecepciones.Size = new System.Drawing.Size(922, 140);
+            this.dgvRecepciones.TabIndex = 0;
+            this.dgvRecepciones.DataSourceChanged += new System.EventHandler(this.dgvRecepciones_DataSourceChanged);
+            // 
+            // toolStrip2
+            // 
+            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel1,
+            this.tsTotalRecepciones});
+            this.toolStrip2.Location = new System.Drawing.Point(3, 162);
+            this.toolStrip2.Name = "toolStrip2";
+            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip2.TabIndex = 1;
+            // 
+            // toolStripLabel1
+            // 
+            this.toolStripLabel1.Name = "toolStripLabel1";
+            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel1.Text = "Total de registros:";
+            // 
+            // tsTotalRecepciones
+            // 
+            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
+            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalRecepciones.Text = "0";
+            // 
             // tabVenta
             // 
+            this.tabVenta.Controls.Add(this.btnExportVenta);
             this.tabVenta.Controls.Add(this.toolStrip3);
             this.tabVenta.Controls.Add(this.dgvVenta);
             this.tabVenta.Location = new System.Drawing.Point(4, 22);
@@ -471,6 +484,31 @@
             this.tabVenta.TabIndex = 1;
             this.tabVenta.Text = "Venta";
             this.tabVenta.UseVisualStyleBackColor = true;
+            // 
+            // btnExportVenta
+            // 
+            this.btnExportVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnExportVenta.Location = new System.Drawing.Point(826, 6);
+            this.btnExportVenta.Name = "btnExportVenta";
+            this.btnExportVenta.Size = new System.Drawing.Size(110, 23);
+            this.btnExportVenta.TabIndex = 100;
+            this.btnExportVenta.Text = "Exportar Venta";
+            this.btnExportVenta.UseVisualStyleBackColor = true;
+            this.btnExportVenta.Click += new System.EventHandler(this.btnExportVenta_Click);
+            // 
+            // dgvVenta
+            // 
+            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvVenta.Location = new System.Drawing.Point(5, 35);
+            this.dgvVenta.Name = "dgvVenta";
+            this.dgvVenta.ReadOnly = true;
+            this.dgvVenta.RowTemplate.Height = 25;
+            this.dgvVenta.Size = new System.Drawing.Size(933, 429);
+            this.dgvVenta.TabIndex = 0;
+            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
             // 
             // toolStrip3
             // 
@@ -482,7 +520,6 @@
             this.toolStrip3.Name = "toolStrip3";
             this.toolStrip3.Size = new System.Drawing.Size(936, 25);
             this.toolStrip3.TabIndex = 1;
-            this.toolStrip3.Text = "toolStrip3";
             // 
             // toolStripLabel3
             // 
@@ -495,20 +532,6 @@
             this.tsTotalVentas.Name = "tsTotalVentas";
             this.tsTotalVentas.Size = new System.Drawing.Size(13, 22);
             this.tsTotalVentas.Text = "0";
-            // 
-            // dgvVenta
-            // 
-            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvVenta.Location = new System.Drawing.Point(5, 5);
-            this.dgvVenta.Name = "dgvVenta";
-            this.dgvVenta.ReadOnly = true;
-            this.dgvVenta.RowTemplate.Height = 25;
-            this.dgvVenta.Size = new System.Drawing.Size(933, 459);
-            this.dgvVenta.TabIndex = 0;
-            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
             // 
             // frmJsonExplorer
             // 
@@ -550,7 +573,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
-
         }
 
         #endregion
@@ -569,6 +591,10 @@
         private System.Windows.Forms.TabControl tabMain;
         private System.Windows.Forms.TabPage tabInventario;
         private System.Windows.Forms.TabPage tabVenta;
+
+        // ✅ Botones por tab
+        private System.Windows.Forms.Button btnExportInventario;
+        private System.Windows.Forms.Button btnExportVenta;
 
         private System.Windows.Forms.GroupBox grpDatosGenerales;
         private System.Windows.Forms.Label lblInstalacion;
