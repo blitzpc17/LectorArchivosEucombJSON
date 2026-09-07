@@ -1,4 +1,4 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using Models;
 using SharpCompress.Archives;
 using System;
@@ -23,6 +23,7 @@ namespace Presentacion
         private DataTable _dtResumenProducto;
         private DataTable _dtRecepciones;
         private DataTable _dtVenta;
+        private DataTable _dtExistencias;
 
         // ✅ Para filtrar recepciones por ClaveSubProducto
         private DataTable _dtRecepcionesFull;
@@ -44,6 +45,7 @@ namespace Presentacion
             SetupGrid(dgvResumenProducto);
             SetupGrid(dgvRecepciones);
             SetupGrid(dgvVenta);
+            SetupGrid(dgvExistencias);
 
             // ✅ Resumen se adapta al ancho del grid
             dgvResumenProducto.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -113,16 +115,19 @@ namespace Presentacion
 
             btnExportInventario.Enabled = false;
             btnExportVenta.Enabled = false;
+            btnExportExistencias.Enabled = false;
 
             ClearDatosGenerales();
 
             dgvResumenProducto.DataSource = null;
             dgvRecepciones.DataSource = null;
             dgvVenta.DataSource = null;
+            dgvExistencias.DataSource = null;
 
             _dtResumenProducto = null;
             _dtRecepciones = null;
             _dtVenta = null;
+            _dtExistencias = null;
 
             _dtRecepcionesFull = null;
             _dvRecepciones = null;
@@ -144,6 +149,7 @@ namespace Presentacion
                 _dtResumenProducto = result.ResumenProducto;
                 _dtRecepciones = result.Recepciones;
                 _dtVenta = result.Venta;
+                _dtExistencias = result.Existencias;
 
                 // ✅ full + view filtrable
                 _dtRecepcionesFull = _dtRecepciones;
@@ -152,17 +158,20 @@ namespace Presentacion
                 dgvResumenProducto.DataSource = _dtResumenProducto;
                 dgvRecepciones.DataSource = (_dvRecepciones != null) ? (object)_dvRecepciones : _dtRecepciones;
                 dgvVenta.DataSource = _dtVenta;
+                dgvExistencias.DataSource = _dtExistencias;
 
                 bool hasInv = (_dtResumenProducto != null && _dtResumenProducto.Rows.Count > 0) ||
                               (_dtRecepciones != null && _dtRecepciones.Rows.Count > 0);
 
                 bool hasVenta = (_dtVenta != null && _dtVenta.Rows.Count > 0);
+                bool hasExistencias = (_dtExistencias != null && _dtExistencias.Rows.Count > 0);
 
-                btnExport.Enabled = hasInv || hasVenta;
+                btnExport.Enabled = hasInv || hasVenta || hasExistencias;
                 btnExportInventario.Enabled = hasInv;
                 btnExportVenta.Enabled = hasVenta;
+                btnExportExistencias.Enabled = hasExistencias;
 
-                lblStatus.Text = $"Listo. Resumen: {(_dtResumenProducto?.Rows.Count ?? 0):N0} | Recepciones: {(_dtRecepciones?.Rows.Count ?? 0):N0} | Venta: {(_dtVenta?.Rows.Count ?? 0):N0}";
+                lblStatus.Text = $"Listo. Resumen: {(_dtResumenProducto?.Rows.Count ?? 0):N0} | Recepciones: {(_dtRecepciones?.Rows.Count ?? 0):N0} | Venta: {(_dtVenta?.Rows.Count ?? 0):N0} | Diarios: {(_dtExistencias?.Rows.Count ?? 0):N0}";
             }
             catch (Exception ex)
             {
@@ -236,6 +245,10 @@ namespace Presentacion
             {
                 ExportVenta();
             }
+            else if (tabMain.SelectedTab == tabExistencias)
+            {
+                ExportExistencias();
+            }
             else
             {
                 ExportInventario();
@@ -252,6 +265,12 @@ namespace Presentacion
         private void btnExportVenta_Click(object sender, EventArgs e)
         {
             ExportVenta();
+        }
+
+        // ✅ Botón exportar en tab Diarios (Existencias)
+        private void btnExportExistencias_Click(object sender, EventArgs e)
+        {
+            ExportExistencias();
         }
 
         private void ExportInventario()
@@ -313,6 +332,30 @@ namespace Presentacion
                 using (var wb = new XLWorkbook())
                 {
                     AddWorksheetFromTable(wb, "Venta", _dtVenta);
+                    wb.SaveAs(sfd.FileName);
+                }
+
+                MessageBox.Show("Exportado correctamente.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void ExportExistencias()
+        {
+            if (_dtExistencias == null || _dtExistencias.Rows.Count == 0)
+            {
+                MessageBox.Show("No hay datos de Diarios para exportar.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Excel (*.xlsx)|*.xlsx";
+                sfd.FileName = "Diarios.xlsx";
+                if (sfd.ShowDialog() != DialogResult.OK) return;
+
+                using (var wb = new XLWorkbook())
+                {
+                    AddWorksheetFromTable(wb, "Diarios", _dtExistencias);
                     wb.SaveAs(sfd.FileName);
                 }
 
@@ -408,12 +451,16 @@ namespace Presentacion
                 // ✅ Venta (Entrega > Complemento > Nacional > CFDIs)
                 var dtVenta = BuildVentasTable(reports);
 
+                // ✅ Diarios (Existencias)
+                var dtExistencias = BuildExistenciasTable(reports);
+
                 return new LoadResult
                 {
                     Reports = reports,
                     ResumenProducto = dtResumen,
                     Recepciones = dtRecep,
-                    Venta = dtVenta
+                    Venta = dtVenta,
+                    Existencias = dtExistencias
                 };
             }
             finally
@@ -428,6 +475,7 @@ namespace Presentacion
             public DataTable ResumenProducto { get; set; }
             public DataTable Recepciones { get; set; }
             public DataTable Venta { get; set; }
+            public DataTable Existencias { get; set; }
         }
 
         // =========================
@@ -581,7 +629,7 @@ namespace Presentacion
 
                                     decimal vol = 0m;
                                     if (cfdi.VolumenDocumentado != null)
-                                        vol = cfdi.VolumenDocumentado.ValorNumerico;
+                                        vol = t.Recepciones.SumaVolumenRecepcion.ValorNumerico;//cfdi.VolumenDocumentado.ValorNumerico;
                                     row["ValorNumerico"] = vol;
 
                                     row["ClaveSubProducto"] = p.ClaveSubProducto ?? "";
@@ -677,6 +725,83 @@ namespace Presentacion
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            return dt;
+        }
+
+        // =========================
+        // DIARIOS (EXISTENCIAS)
+        // =========================
+        private DataTable BuildExistenciasTable(List<ReportItem> items)
+        {
+            var dt = new DataTable();
+
+            dt.Columns.Add("RFCContribuyente", typeof(string));
+            dt.Columns.Add("NumPermiso", typeof(string));
+            dt.Columns.Add("ClaveProducto", typeof(string));
+            dt.Columns.Add("ClaveSubProducto", typeof(string));
+            dt.Columns.Add("ClaveIdentificacionTanque", typeof(string));
+            
+            dt.Columns.Add("VolumenExistenciasAnterior", typeof(decimal));
+            dt.Columns.Add("VolumenAcumOpsRecepcion_UnidadDeMedida", typeof(string));
+            dt.Columns.Add("VolumenAcumOpsRecepcion_ValorNumerico", typeof(decimal));
+            dt.Columns.Add("HoraRecepcionAcumulado", typeof(string));
+            dt.Columns.Add("VolumenAcumOpsEntrega_UnidadDeMedida", typeof(string));
+            dt.Columns.Add("VolumenAcumOpsEntrega_ValorNumerico", typeof(decimal));
+            dt.Columns.Add("HoraEntregaAcumulado", typeof(string));
+            dt.Columns.Add("VolumenExistencias", typeof(decimal));
+            dt.Columns.Add("FechaYHoraEstaMedicion", typeof(string));
+            dt.Columns.Add("FechaYHoraMedicionAnterior", typeof(string));
+            
+            dt.Columns.Add("SourceFile", typeof(string));
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                var r = item.Report;
+                if (r == null || r.Producto == null) continue;
+
+                for (int pIndex = 0; pIndex < r.Producto.Count; pIndex++)
+                {
+                    var p = r.Producto[pIndex];
+                    if (p == null || p.Tanque == null) continue;
+
+                    for (int tIndex = 0; tIndex < p.Tanque.Count; tIndex++)
+                    {
+                        var t = p.Tanque[tIndex];
+                        if (t == null || t.Existencias == null) continue;
+
+                        var ext = t.Existencias;
+                        var row = dt.NewRow();
+
+                        row["RFCContribuyente"] = r.RfcContribuyente ?? "";
+                        row["NumPermiso"] = r.NumPermiso ?? "";
+                        row["ClaveProducto"] = p.ClaveProducto ?? "";
+                        row["ClaveSubProducto"] = p.ClaveSubProducto ?? "";
+                        row["ClaveIdentificacionTanque"] = t.ClaveIdentificacionTanque ?? "";
+
+                        row["VolumenExistenciasAnterior"] = ext.VolumenExistenciasAnterior ?? 0m;
+                        
+                        row["VolumenAcumOpsRecepcion_UnidadDeMedida"] = (ext.VolumenAcumOpsRecepcion != null) ? (ext.VolumenAcumOpsRecepcion.UnidadDeMedida ?? "") : "";
+                        row["VolumenAcumOpsRecepcion_ValorNumerico"] = (ext.VolumenAcumOpsRecepcion != null) ? ext.VolumenAcumOpsRecepcion.ValorNumerico : 0m;
+                        
+                        row["HoraRecepcionAcumulado"] = ext.HoraRecepcionAcumulado ?? "";
+                        
+                        row["VolumenAcumOpsEntrega_UnidadDeMedida"] = (ext.VolumenAcumOpsEntrega != null) ? (ext.VolumenAcumOpsEntrega.UnidadDeMedida ?? "") : "";
+                        row["VolumenAcumOpsEntrega_ValorNumerico"] = (ext.VolumenAcumOpsEntrega != null) ? ext.VolumenAcumOpsEntrega.ValorNumerico : 0m;
+                        
+                        row["HoraEntregaAcumulado"] = ext.HoraEntregaAcumulado ?? "";
+                        row["VolumenExistencias"] = ext.VolumenExistencias ?? 0m;
+
+                        row["FechaYHoraEstaMedicion"] = ext.FechaYHoraEstaMedicion.HasValue ? ext.FechaYHoraEstaMedicion.Value.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                        row["FechaYHoraMedicionAnterior"] = ext.FechaYHoraMedicionAnterior.HasValue ? ext.FechaYHoraMedicionAnterior.Value.ToString("yyyy-MM-dd HH:mm:ss") : "";
+                        
+                        row["SourceFile"] = Path.GetFileName(item.SourceFile);
+
+                        dt.Rows.Add(row);
                     }
                 }
             }
@@ -955,6 +1080,12 @@ namespace Presentacion
         {
             if (dgvVenta.DataSource == null) return;
             tsTotalVentas.Text = dgvVenta.RowCount.ToString("N0");
+        }
+
+        private void dgvExistencias_DataSourceChanged(object sender, EventArgs e)
+        {
+            if (dgvExistencias.DataSource == null) return;
+            tsTotalExistencias.Text = dgvExistencias.RowCount.ToString("N0");
         }
     }
 }

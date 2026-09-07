@@ -420,7 +420,7 @@ namespace Presentacion
 
                                     decimal vol = 0m;
                                     if (cfdi.VolumenDocumentado != null)
-                                        vol = cfdi.VolumenDocumentado.ValorNumerico;
+                                        vol = t.Recepciones.SumaVolumenRecepcion.ValorNumerico;//cfdi.VolumenDocumentado.ValorNumerico;
                                     row["ValorNumerico"] = vol;
 
                                     row["ProductoIndex"] = pIndex;

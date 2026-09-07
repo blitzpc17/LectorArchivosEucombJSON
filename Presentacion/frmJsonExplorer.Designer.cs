@@ -1,4 +1,4 @@
-﻿namespace Presentacion
+namespace Presentacion
 {
     partial class frmJsonExplorer
     {
@@ -53,6 +53,12 @@
             this.lblRfcContribuyente = new System.Windows.Forms.Label();
             this.lblVersion = new System.Windows.Forms.Label();
             this.lblInstalacion = new System.Windows.Forms.Label();
+            this.tabExistencias = new System.Windows.Forms.TabPage();
+            this.btnExportExistencias = new System.Windows.Forms.Button();
+            this.toolStrip4 = new System.Windows.Forms.ToolStrip();
+            this.toolStripLabel4 = new System.Windows.Forms.ToolStripLabel();
+            this.tsTotalExistencias = new System.Windows.Forms.ToolStripLabel();
+            this.dgvExistencias = new System.Windows.Forms.DataGridView();
             this.tabVenta = new System.Windows.Forms.TabPage();
             this.btnExportVenta = new System.Windows.Forms.Button();
             this.toolStrip3 = new System.Windows.Forms.ToolStrip();
@@ -69,6 +75,9 @@
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvResumenProducto)).BeginInit();
             this.grpDatosGenerales.SuspendLayout();
+            this.tabExistencias.SuspendLayout();
+            this.toolStrip4.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvExistencias)).BeginInit();
             this.tabVenta.SuspendLayout();
             this.toolStrip3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).BeginInit();
@@ -76,7 +85,7 @@
             // 
             // txtFolder
             // 
-            this.txtFolder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.txtFolder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtFolder.Location = new System.Drawing.Point(10, 10);
             this.txtFolder.Name = "txtFolder";
@@ -118,7 +127,7 @@
             // 
             // progressBar
             // 
-            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.progressBar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.progressBar.Location = new System.Drawing.Point(10, 36);
             this.progressBar.Name = "progressBar";
@@ -127,7 +136,7 @@
             // 
             // lblStatus
             // 
-            this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.lblStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblStatus.Location = new System.Drawing.Point(10, 50);
             this.lblStatus.Name = "lblStatus";
@@ -137,7 +146,7 @@
             // 
             // groupBoxOptions
             // 
-            this.groupBoxOptions.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.groupBoxOptions.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBoxOptions.Controls.Add(this.chkStopOnFirstJson);
             this.groupBoxOptions.Controls.Add(this.chkOnlyFirstJsonPerArchive);
@@ -172,10 +181,11 @@
             // 
             // tabMain
             // 
-            this.tabMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
+            this.tabMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tabMain.Controls.Add(this.tabInventario);
+            this.tabMain.Controls.Add(this.tabExistencias);
             this.tabMain.Controls.Add(this.tabVenta);
             this.tabMain.Location = new System.Drawing.Point(10, 130);
             this.tabMain.Name = "tabMain";
@@ -208,9 +218,110 @@
             this.btnExportInventario.UseVisualStyleBackColor = true;
             this.btnExportInventario.Click += new System.EventHandler(this.btnExportInventario_Click);
             // 
+            // grpRecepciones
+            // 
+            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpRecepciones.Controls.Add(this.toolStrip2);
+            this.grpRecepciones.Controls.Add(this.dgvRecepciones);
+            this.grpRecepciones.Location = new System.Drawing.Point(5, 302);
+            this.grpRecepciones.Name = "grpRecepciones";
+            this.grpRecepciones.Size = new System.Drawing.Size(933, 190);
+            this.grpRecepciones.TabIndex = 2;
+            this.grpRecepciones.TabStop = false;
+            this.grpRecepciones.Text = "Recepciones (CFDI)";
+            // 
+            // toolStrip2
+            // 
+            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel1,
+            this.tsTotalRecepciones});
+            this.toolStrip2.Location = new System.Drawing.Point(3, 162);
+            this.toolStrip2.Name = "toolStrip2";
+            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip2.TabIndex = 1;
+            // 
+            // toolStripLabel1
+            // 
+            this.toolStripLabel1.Name = "toolStripLabel1";
+            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel1.Text = "Total de registros:";
+            // 
+            // tsTotalRecepciones
+            // 
+            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
+            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalRecepciones.Text = "0";
+            // 
+            // dgvRecepciones
+            // 
+            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvRecepciones.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvRecepciones.Location = new System.Drawing.Point(5, 19);
+            this.dgvRecepciones.Name = "dgvRecepciones";
+            this.dgvRecepciones.ReadOnly = true;
+            this.dgvRecepciones.RowTemplate.Height = 25;
+            this.dgvRecepciones.Size = new System.Drawing.Size(922, 140);
+            this.dgvRecepciones.TabIndex = 0;
+            this.dgvRecepciones.DataSourceChanged += new System.EventHandler(this.dgvRecepciones_DataSourceChanged);
+            // 
+            // grpResumen
+            // 
+            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpResumen.Controls.Add(this.toolStrip1);
+            this.grpResumen.Controls.Add(this.dgvResumenProducto);
+            this.grpResumen.Location = new System.Drawing.Point(5, 142);
+            this.grpResumen.Name = "grpResumen";
+            this.grpResumen.Size = new System.Drawing.Size(933, 154);
+            this.grpResumen.TabIndex = 1;
+            this.grpResumen.TabStop = false;
+            this.grpResumen.Text = "Resumen por Producto";
+            // 
+            // toolStrip1
+            // 
+            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel2,
+            this.tsTotalProductos});
+            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
+            this.toolStrip1.Name = "toolStrip1";
+            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
+            this.toolStrip1.TabIndex = 1;
+            // 
+            // toolStripLabel2
+            // 
+            this.toolStripLabel2.Name = "toolStripLabel2";
+            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel2.Text = "Total de registros:";
+            // 
+            // tsTotalProductos
+            // 
+            this.tsTotalProductos.Name = "tsTotalProductos";
+            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalProductos.Text = "0";
+            // 
+            // dgvResumenProducto
+            // 
+            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvResumenProducto.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvResumenProducto.Location = new System.Drawing.Point(5, 19);
+            this.dgvResumenProducto.Name = "dgvResumenProducto";
+            this.dgvResumenProducto.ReadOnly = true;
+            this.dgvResumenProducto.RowTemplate.Height = 25;
+            this.dgvResumenProducto.Size = new System.Drawing.Size(922, 104);
+            this.dgvResumenProducto.TabIndex = 0;
+            this.dgvResumenProducto.DataSourceChanged += new System.EventHandler(this.dgvResumenProducto_DataSourceChanged);
+            // 
             // grpDatosGenerales
             // 
-            this.grpDatosGenerales.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.grpDatosGenerales.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.grpDatosGenerales.Controls.Add(this.txtNumPermiso);
             this.grpDatosGenerales.Controls.Add(this.txtModalidadPermiso);
@@ -371,106 +482,66 @@
             this.lblInstalacion.TabIndex = 15;
             this.lblInstalacion.Text = "Instalación:";
             // 
-            // grpResumen
+            // tabExistencias
             // 
-            this.grpResumen.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.tabExistencias.Controls.Add(this.btnExportExistencias);
+            this.tabExistencias.Controls.Add(this.toolStrip4);
+            this.tabExistencias.Controls.Add(this.dgvExistencias);
+            this.tabExistencias.Location = new System.Drawing.Point(4, 22);
+            this.tabExistencias.Name = "tabExistencias";
+            this.tabExistencias.Padding = new System.Windows.Forms.Padding(3);
+            this.tabExistencias.Size = new System.Drawing.Size(942, 495);
+            this.tabExistencias.TabIndex = 2;
+            this.tabExistencias.Text = "Existencias";
+            this.tabExistencias.UseVisualStyleBackColor = true;
+            // 
+            // btnExportExistencias
+            // 
+            this.btnExportExistencias.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnExportExistencias.Location = new System.Drawing.Point(826, 6);
+            this.btnExportExistencias.Name = "btnExportExistencias";
+            this.btnExportExistencias.Size = new System.Drawing.Size(110, 23);
+            this.btnExportExistencias.TabIndex = 100;
+            this.btnExportExistencias.Text = "Exportar Diarios";
+            this.btnExportExistencias.UseVisualStyleBackColor = true;
+            this.btnExportExistencias.Click += new System.EventHandler(this.btnExportExistencias_Click);
+            // 
+            // toolStrip4
+            // 
+            this.toolStrip4.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.toolStrip4.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel4,
+            this.tsTotalExistencias});
+            this.toolStrip4.Location = new System.Drawing.Point(3, 467);
+            this.toolStrip4.Name = "toolStrip4";
+            this.toolStrip4.Size = new System.Drawing.Size(936, 25);
+            this.toolStrip4.TabIndex = 1;
+            // 
+            // toolStripLabel4
+            // 
+            this.toolStripLabel4.Name = "toolStripLabel4";
+            this.toolStripLabel4.Size = new System.Drawing.Size(99, 22);
+            this.toolStripLabel4.Text = "Total de registros:";
+            // 
+            // tsTotalExistencias
+            // 
+            this.tsTotalExistencias.Name = "tsTotalExistencias";
+            this.tsTotalExistencias.Size = new System.Drawing.Size(13, 22);
+            this.tsTotalExistencias.Text = "0";
+            // 
+            // dgvExistencias
+            // 
+            this.dgvExistencias.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.grpResumen.Controls.Add(this.toolStrip1);
-            this.grpResumen.Controls.Add(this.dgvResumenProducto);
-            this.grpResumen.Location = new System.Drawing.Point(5, 142);
-            this.grpResumen.Name = "grpResumen";
-            this.grpResumen.Size = new System.Drawing.Size(933, 154);
-            this.grpResumen.TabIndex = 1;
-            this.grpResumen.TabStop = false;
-            this.grpResumen.Text = "Resumen por Producto";
-            // 
-            // dgvResumenProducto
-            // 
-            this.dgvResumenProducto.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvResumenProducto.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvResumenProducto.Location = new System.Drawing.Point(5, 19);
-            this.dgvResumenProducto.Name = "dgvResumenProducto";
-            this.dgvResumenProducto.ReadOnly = true;
-            this.dgvResumenProducto.RowTemplate.Height = 25;
-            this.dgvResumenProducto.Size = new System.Drawing.Size(922, 104);
-            this.dgvResumenProducto.TabIndex = 0;
-            this.dgvResumenProducto.DataSourceChanged += new System.EventHandler(this.dgvResumenProducto_DataSourceChanged);
-            // 
-            // toolStrip1
-            // 
-            this.toolStrip1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel2,
-            this.tsTotalProductos});
-            this.toolStrip1.Location = new System.Drawing.Point(3, 126);
-            this.toolStrip1.Name = "toolStrip1";
-            this.toolStrip1.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip1.TabIndex = 1;
-            // 
-            // toolStripLabel2
-            // 
-            this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel2.Text = "Total de registros:";
-            // 
-            // tsTotalProductos
-            // 
-            this.tsTotalProductos.Name = "tsTotalProductos";
-            this.tsTotalProductos.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalProductos.Text = "0";
-            // 
-            // grpRecepciones
-            // 
-            this.grpRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.grpRecepciones.Controls.Add(this.toolStrip2);
-            this.grpRecepciones.Controls.Add(this.dgvRecepciones);
-            this.grpRecepciones.Location = new System.Drawing.Point(5, 302);
-            this.grpRecepciones.Name = "grpRecepciones";
-            this.grpRecepciones.Size = new System.Drawing.Size(933, 190);
-            this.grpRecepciones.TabIndex = 2;
-            this.grpRecepciones.TabStop = false;
-            this.grpRecepciones.Text = "Recepciones (CFDI)";
-            // 
-            // dgvRecepciones
-            // 
-            this.dgvRecepciones.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvRecepciones.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvRecepciones.Location = new System.Drawing.Point(5, 19);
-            this.dgvRecepciones.Name = "dgvRecepciones";
-            this.dgvRecepciones.ReadOnly = true;
-            this.dgvRecepciones.RowTemplate.Height = 25;
-            this.dgvRecepciones.Size = new System.Drawing.Size(922, 140);
-            this.dgvRecepciones.TabIndex = 0;
-            this.dgvRecepciones.DataSourceChanged += new System.EventHandler(this.dgvRecepciones_DataSourceChanged);
-            // 
-            // toolStrip2
-            // 
-            this.toolStrip2.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.toolStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel1,
-            this.tsTotalRecepciones});
-            this.toolStrip2.Location = new System.Drawing.Point(3, 162);
-            this.toolStrip2.Name = "toolStrip2";
-            this.toolStrip2.Size = new System.Drawing.Size(927, 25);
-            this.toolStrip2.TabIndex = 1;
-            // 
-            // toolStripLabel1
-            // 
-            this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(99, 22);
-            this.toolStripLabel1.Text = "Total de registros:";
-            // 
-            // tsTotalRecepciones
-            // 
-            this.tsTotalRecepciones.Name = "tsTotalRecepciones";
-            this.tsTotalRecepciones.Size = new System.Drawing.Size(13, 22);
-            this.tsTotalRecepciones.Text = "0";
+            this.dgvExistencias.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvExistencias.Location = new System.Drawing.Point(5, 35);
+            this.dgvExistencias.Name = "dgvExistencias";
+            this.dgvExistencias.ReadOnly = true;
+            this.dgvExistencias.RowTemplate.Height = 25;
+            this.dgvExistencias.Size = new System.Drawing.Size(933, 429);
+            this.dgvExistencias.TabIndex = 0;
+            this.dgvExistencias.DataSourceChanged += new System.EventHandler(this.dgvExistencias_DataSourceChanged);
             // 
             // tabVenta
             // 
@@ -496,20 +567,6 @@
             this.btnExportVenta.UseVisualStyleBackColor = true;
             this.btnExportVenta.Click += new System.EventHandler(this.btnExportVenta_Click);
             // 
-            // dgvVenta
-            // 
-            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvVenta.Location = new System.Drawing.Point(5, 35);
-            this.dgvVenta.Name = "dgvVenta";
-            this.dgvVenta.ReadOnly = true;
-            this.dgvVenta.RowTemplate.Height = 25;
-            this.dgvVenta.Size = new System.Drawing.Size(933, 429);
-            this.dgvVenta.TabIndex = 0;
-            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
-            // 
             // toolStrip3
             // 
             this.toolStrip3.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -532,6 +589,20 @@
             this.tsTotalVentas.Name = "tsTotalVentas";
             this.tsTotalVentas.Size = new System.Drawing.Size(13, 22);
             this.tsTotalVentas.Text = "0";
+            // 
+            // dgvVenta
+            // 
+            this.dgvVenta.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvVenta.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvVenta.Location = new System.Drawing.Point(5, 35);
+            this.dgvVenta.Name = "dgvVenta";
+            this.dgvVenta.ReadOnly = true;
+            this.dgvVenta.RowTemplate.Height = 25;
+            this.dgvVenta.Size = new System.Drawing.Size(933, 429);
+            this.dgvVenta.TabIndex = 0;
+            this.dgvVenta.DataSourceChanged += new System.EventHandler(this.dgvVenta_DataSourceChanged);
             // 
             // frmJsonExplorer
             // 
@@ -566,6 +637,11 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvResumenProducto)).EndInit();
             this.grpDatosGenerales.ResumeLayout(false);
             this.grpDatosGenerales.PerformLayout();
+            this.tabExistencias.ResumeLayout(false);
+            this.tabExistencias.PerformLayout();
+            this.toolStrip4.ResumeLayout(false);
+            this.toolStrip4.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvExistencias)).EndInit();
             this.tabVenta.ResumeLayout(false);
             this.tabVenta.PerformLayout();
             this.toolStrip3.ResumeLayout(false);
@@ -573,6 +649,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvVenta)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
+
         }
 
         #endregion
@@ -632,5 +709,11 @@
         private System.Windows.Forms.ToolStrip toolStrip3;
         private System.Windows.Forms.ToolStripLabel toolStripLabel3;
         private System.Windows.Forms.ToolStripLabel tsTotalVentas;
+        private System.Windows.Forms.TabPage tabExistencias;
+        private System.Windows.Forms.Button btnExportExistencias;
+        private System.Windows.Forms.DataGridView dgvExistencias;
+        private System.Windows.Forms.ToolStrip toolStrip4;
+        private System.Windows.Forms.ToolStripLabel toolStripLabel4;
+        private System.Windows.Forms.ToolStripLabel tsTotalExistencias;
     }
 }

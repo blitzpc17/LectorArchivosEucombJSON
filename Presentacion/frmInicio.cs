@@ -19,7 +19,7 @@ namespace Presentacion
 
         private void btnLector_Click(object sender, EventArgs e)
         {
-            var frm = new frmRecepcionesCfdiViewer();
+            var frm = new frmJsonExplorer();
             frm.ShowDialog(this);
         }
 
